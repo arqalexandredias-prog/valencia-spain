@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   Calculator,
   CheckCircle2,
   FileText,
@@ -441,6 +442,38 @@ function getCostsSummary(costs = []) {
   return { total, paid, pending, totalItems, paidItems, progress };
 }
 
+function getPlanStatus(progress, monthsLeft, docsPending) {
+  if (progress >= 100) {
+    return { label: "Pronto", tone: "success" };
+  }
+
+  if (monthsLeft <= 3 && progress < 75) {
+    return { label: "Atenção", tone: "warning" };
+  }
+
+  if (docsPending > 0) {
+    return { label: "Em preparo", tone: "neutral" };
+  }
+
+  return { label: "No caminho", tone: "success" };
+}
+
+function getFocusPage(summary) {
+  if (summary.docsSummary.pending > 0) {
+    return { label: "Docs", page: "documentos" };
+  }
+
+  if (summary.totalEUR <= 0) {
+    return { label: "Euros", page: "euros" };
+  }
+
+  if (summary.missing > 0) {
+    return { label: "Reserva", page: "reserva" };
+  }
+
+  return { label: "Plano", page: "plano" };
+}
+
 function AppShell({ activePage, setActivePage, children }) {
   return (
     <div className="app-shell">
@@ -553,7 +586,42 @@ function SectionTitle({ eyebrow, title }) {
   );
 }
 
-function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
+function InsightPill({ label, value }) {
+  return (
+    <div className="insight-pill">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function QuickAction({ title, label, onClick }) {
+  return (
+    <button className="quick-action" type="button" onClick={onClick}>
+      <span>
+        <small>{label}</small>
+        <strong>{title}</strong>
+      </span>
+
+      <ArrowRight size={17} />
+    </button>
+  );
+}
+
+function FormError({ children }) {
+  if (!children) return null;
+
+  return <p className="form-error field-full">{children}</p>;
+}
+
+function Dashboard({
+  savings,
+  euroPurchases,
+  documents,
+  plan,
+  costs,
+  onNavigate,
+}) {
   const summary = useMemo(() => {
     const savedBRL = getSavingsTotal(savings);
     const euroSummary = getEuroSummary(euroPurchases, plan.euroRate);
@@ -569,6 +637,7 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
 
     const monthsLeft = getMonthsUntil(plan.targetDate);
     const monthlyNeed = missing / monthsLeft;
+    const status = getPlanStatus(progress, monthsLeft, docsSummary.pending);
 
     return {
       savedBRL,
@@ -577,15 +646,26 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
       progress,
       monthsLeft,
       monthlyNeed,
+      status,
       docsSummary,
       costsSummary,
       ...euroSummary,
     };
   }, [savings, euroPurchases, documents, plan, costs]);
 
+  const focus = getFocusPage(summary);
+
   return (
     <>
-      <PageHeader eyebrow="Plano Espanha" title="Meta Espanha" />
+      <PageHeader
+        eyebrow="Plano Espanha"
+        title="Meta Espanha"
+        right={
+          <span className={`status-chip ${summary.status.tone}`}>
+            {summary.status.label}
+          </span>
+        }
+      />
 
       <Card className="hero-card clean-hero-card">
         <div className="hero-grid">
@@ -607,6 +687,19 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
         </div>
 
         <ProgressBar value={summary.progress} />
+      </Card>
+
+      <Card className="insight-card">
+        <div className="insight-main">
+          <span>Ritmo necessário</span>
+          <strong>{formatBRL(summary.monthlyNeed)}/mês</strong>
+        </div>
+
+        <div className="insight-grid">
+          <InsightPill label="Destino" value={plan.city || "Espanha"} />
+          <InsightPill label="Prazo" value={`${summary.monthsLeft} meses`} />
+          <InsightPill label="Foco" value={focus.label} />
+        </div>
       </Card>
 
       <section className="compact-metrics">
@@ -634,11 +727,33 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
           helper="estimado"
         />
       </section>
+
+      <section className="quick-actions">
+        <QuickAction
+          label="Adicionar"
+          title="Reserva"
+          onClick={() => onNavigate("reserva")}
+        />
+
+        <QuickAction
+          label="Comprar"
+          title="Euros"
+          onClick={() => onNavigate("euros")}
+        />
+
+        <QuickAction
+          label="Resolver"
+          title={focus.label}
+          onClick={() => onNavigate(focus.page)}
+        />
+      </section>
     </>
   );
 }
 
 function SavingsForm({ onSave, editingItem, onCancel }) {
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     title: editingItem?.title || "",
     place: editingItem?.place || "",
@@ -655,10 +770,13 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
       date: editingItem?.date || new Date().toISOString().slice(0, 10),
       note: editingItem?.note || "",
     });
+
+    setError("");
   }, [editingItem]);
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
@@ -666,8 +784,15 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
 
     const amount = parseMoney(form.amount);
 
-    if (!form.title.trim()) return alert("Informe um nome.");
-    if (amount <= 0) return alert("Informe um valor maior que zero.");
+    if (!form.title.trim()) {
+      setError("Informe um nome para esta reserva.");
+      return;
+    }
+
+    if (amount <= 0) {
+      setError("Informe um valor maior que zero.");
+      return;
+    }
 
     onSave({
       ...editingItem,
@@ -678,6 +803,8 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
       date: form.date,
       note: form.note.trim(),
     });
+
+    setError("");
 
     setForm({
       title: "",
@@ -746,6 +873,8 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
             onChange={handleChange}
           />
         </label>
+
+        <FormError>{error}</FormError>
 
         <div className="form-actions field-full">
           {editingItem && (
@@ -878,6 +1007,8 @@ function ReservaPage({ savings, setSavings, plan }) {
 }
 
 function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     account: editingItem?.account || "",
     amountEUR: editingItem?.amountEUR
@@ -921,10 +1052,13 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
       date: editingItem?.date || new Date().toISOString().slice(0, 10),
       note: editingItem?.note || "",
     });
+
+    setError("");
   }, [editingItem, euroRate]);
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
@@ -935,8 +1069,15 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
     const amountBRLTyped = parseMoney(form.amountBRL);
     const amountBRL = amountBRLTyped > 0 ? amountBRLTyped : amountEUR * rate;
 
-    if (amountEUR <= 0) return alert("Informe os euros.");
-    if (rate <= 0) return alert("Informe a cotação.");
+    if (amountEUR <= 0) {
+      setError("Informe a quantidade de euros.");
+      return;
+    }
+
+    if (rate <= 0) {
+      setError("Informe a cotação.");
+      return;
+    }
 
     onSave({
       ...editingItem,
@@ -948,6 +1089,8 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
       date: form.date,
       note: form.note.trim(),
     });
+
+    setError("");
 
     setForm({
       account: "",
@@ -1037,6 +1180,8 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
             { label: "Total", value: formatBRLWithCents(preview.amountBRL) },
           ]}
         />
+
+        <FormError>{error}</FormError>
 
         <div className="form-actions field-full">
           {editingItem && (
@@ -1186,6 +1331,8 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
 }
 
 function DocumentForm({ onSave, editingItem, onCancel }) {
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     title: editingItem?.title || "",
     category: editingItem?.category || "",
@@ -1204,16 +1351,22 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
       done: editingItem?.done || false,
       note: editingItem?.note || "",
     });
+
+    setError("");
   }, [editingItem]);
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.title.trim()) return alert("Informe o documento.");
+    if (!form.title.trim()) {
+      setError("Informe o nome do documento.");
+      return;
+    }
 
     onSave({
       ...editingItem,
@@ -1225,6 +1378,8 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
       done: form.done,
       note: form.note.trim(),
     });
+
+    setError("");
 
     setForm({
       title: "",
@@ -1306,6 +1461,8 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
             onChange={handleChange}
           />
         </label>
+
+        <FormError>{error}</FormError>
 
         <div className="form-actions field-full">
           {editingItem && (
@@ -1471,6 +1628,8 @@ function DocumentosPage({ documents, setDocuments }) {
 }
 
 function CostForm({ onSave, editingItem, onCancel }) {
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     title: editingItem?.title || "",
     category: editingItem?.category || "",
@@ -1489,10 +1648,13 @@ function CostForm({ onSave, editingItem, onCancel }) {
       paid: editingItem?.paid || false,
       note: editingItem?.note || "",
     });
+
+    setError("");
   }, [editingItem]);
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
@@ -1500,8 +1662,15 @@ function CostForm({ onSave, editingItem, onCancel }) {
 
     const amount = parseMoney(form.amount);
 
-    if (!form.title.trim()) return alert("Informe o custo.");
-    if (amount <= 0) return alert("Informe um valor maior que zero.");
+    if (!form.title.trim()) {
+      setError("Informe o nome do custo.");
+      return;
+    }
+
+    if (amount <= 0) {
+      setError("Informe um valor maior que zero.");
+      return;
+    }
 
     onSave({
       ...editingItem,
@@ -1513,6 +1682,8 @@ function CostForm({ onSave, editingItem, onCancel }) {
       paid: form.paid,
       note: form.note.trim(),
     });
+
+    setError("");
 
     setForm({
       title: "",
@@ -1595,6 +1766,8 @@ function CostForm({ onSave, editingItem, onCancel }) {
             onChange={handleChange}
           />
         </label>
+
+        <FormError>{error}</FormError>
 
         <div className="form-actions field-full">
           {editingItem && (
@@ -1758,6 +1931,8 @@ function CustosPage({ costs, setCosts, plan }) {
 }
 
 function PlanForm({ plan, setPlan, onDone }) {
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     city: plan.city || "",
     country: plan.country || "Espanha",
@@ -1778,10 +1953,13 @@ function PlanForm({ plan, setPlan, onDone }) {
       euroRate: String(plan.euroRate || "").replace(".", ","),
       note: plan.note || "",
     });
+
+    setError("");
   }, [plan]);
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
@@ -1791,9 +1969,20 @@ function PlanForm({ plan, setPlan, onDone }) {
     const goalEUR = parseMoney(form.goalEUR);
     const euroRate = parseMoney(form.euroRate);
 
-    if (!form.city.trim()) return alert("Informe a cidade.");
-    if (goalBRL <= 0) return alert("Informe a meta.");
-    if (euroRate <= 0) return alert("Informe a cotação.");
+    if (!form.city.trim()) {
+      setError("Informe a cidade.");
+      return;
+    }
+
+    if (goalBRL <= 0) {
+      setError("Informe a meta em reais.");
+      return;
+    }
+
+    if (euroRate <= 0) {
+      setError("Informe a cotação.");
+      return;
+    }
 
     setPlan((current) => ({
       ...current,
@@ -1806,6 +1995,7 @@ function PlanForm({ plan, setPlan, onDone }) {
       note: form.note.trim(),
     }));
 
+    setError("");
     onDone();
   }
 
@@ -1877,6 +2067,8 @@ function PlanForm({ plan, setPlan, onDone }) {
           />
         </label>
 
+        <FormError>{error}</FormError>
+
         <div className="form-actions field-full">
           <button className="button primary" type="submit">
             Salvar
@@ -1888,16 +2080,21 @@ function PlanForm({ plan, setPlan, onDone }) {
 }
 
 function StepForm({ onSave, onDone }) {
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ title: "", note: "" });
 
   function handleChange(event) {
     handleFormChange(event, setForm);
+    setError("");
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.title.trim()) return alert("Informe a etapa.");
+    if (!form.title.trim()) {
+      setError("Informe a etapa.");
+      return;
+    }
 
     onSave({
       id: Date.now(),
@@ -1907,6 +2104,7 @@ function StepForm({ onSave, onDone }) {
     });
 
     setForm({ title: "", note: "" });
+    setError("");
     onDone();
   }
 
@@ -1934,6 +2132,8 @@ function StepForm({ onSave, onDone }) {
             onChange={handleChange}
           />
         </label>
+
+        <FormError>{error}</FormError>
 
         <div className="form-actions field-full">
           <button className="button primary" type="submit">
@@ -2172,6 +2372,7 @@ export default function App() {
         documents={documents}
         plan={plan}
         costs={costs}
+        onNavigate={setActivePage}
       />
     );
   }
