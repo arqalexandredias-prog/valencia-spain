@@ -1,16 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   FileText,
   Home,
   Landmark,
+  Pencil,
   Plane,
+  Plus,
+  Trash2,
   Wallet,
 } from "lucide-react";
 
+const STORAGE_KEYS = {
+  savings: "valencia_spain_savings_v1",
+};
+
 const initialData = {
   goalBRL: 60000,
-  savedBRL: 13000,
   euros: 0,
   euroRate: 5.9,
   targetDate: "Abril de 2027",
@@ -25,6 +31,17 @@ const initialData = {
   ],
 };
 
+const defaultSavings = [
+  {
+    id: 1,
+    title: "Reserva inicial",
+    place: "Dinheiro já guardado",
+    amount: 13000,
+    date: new Date().toISOString().slice(0, 10),
+    note: "Valor inicial cadastrado no VALENCIA.",
+  },
+];
+
 const navItems = [
   { id: "inicio", label: "Início", icon: Home },
   { id: "reserva", label: "Reserva", icon: Wallet },
@@ -32,6 +49,40 @@ const navItems = [
   { id: "documentos", label: "Docs", icon: FileText },
   { id: "plano", label: "Plano", icon: Plane },
 ];
+
+function loadFromStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function parseMoney(value) {
+  if (typeof value === "number") return value;
+
+  const normalized = String(value || "")
+    .replace(/\s/g, "")
+    .replace("R$", "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || Number.isNaN(parsed)) {
+    return 0;
+  }
+
+  return parsed;
+}
 
 function formatBRL(value) {
   return new Intl.NumberFormat("pt-BR", {
@@ -47,6 +98,16 @@ function formatEUR(value) {
     currency: "EUR",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function formatDate(date) {
+  if (!date) return "Sem data";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
 }
 
 function AppShell({ activePage, setActivePage, children }) {
@@ -123,12 +184,17 @@ function ProgressBar({ value }) {
   );
 }
 
-function Dashboard() {
+function Dashboard({ savings }) {
   const data = initialData;
 
   const summary = useMemo(() => {
+    const savedBRL = savings.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+
     const euroValueBRL = data.euros * data.euroRate;
-    const totalSaved = data.savedBRL + euroValueBRL;
+    const totalSaved = savedBRL + euroValueBRL;
     const missing = Math.max(data.goalBRL - totalSaved, 0);
     const progress = data.goalBRL > 0 ? (totalSaved / data.goalBRL) * 100 : 0;
 
@@ -137,13 +203,14 @@ function Dashboard() {
       data.documents.length > 0 ? (doneDocs / data.documents.length) * 100 : 0;
 
     return {
+      savedBRL,
       totalSaved,
       missing,
       progress,
       doneDocs,
       docsProgress,
     };
-  }, [data]);
+  }, [data, savings]);
 
   return (
     <>
@@ -182,7 +249,7 @@ function Dashboard() {
       <section className="stats-grid">
         <StatCard
           label="Guardado"
-          value={formatBRL(data.savedBRL)}
+          value={formatBRL(summary.savedBRL)}
           helper="Reserva em reais para a mudança"
         />
 
@@ -242,22 +309,255 @@ function Dashboard() {
   );
 }
 
-function ReservaPage() {
+function SavingsForm({ onSave, editingItem, onCancel }) {
+  const [form, setForm] = useState({
+    title: editingItem?.title || "",
+    place: editingItem?.place || "",
+    amount: editingItem?.amount ? String(editingItem.amount) : "",
+    date: editingItem?.date || new Date().toISOString().slice(0, 10),
+    note: editingItem?.note || "",
+  });
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const amount = parseMoney(form.amount);
+
+    if (!form.title.trim()) {
+      alert("Informe um nome para esse valor.");
+      return;
+    }
+
+    if (amount <= 0) {
+      alert("Informe um valor maior que zero.");
+      return;
+    }
+
+    onSave({
+      ...editingItem,
+      id: editingItem?.id || Date.now(),
+      title: form.title.trim(),
+      place: form.place.trim(),
+      amount,
+      date: form.date,
+      note: form.note.trim(),
+    });
+
+    setForm({
+      title: "",
+      place: "",
+      amount: "",
+      date: new Date().toISOString().slice(0, 10),
+      note: "",
+    });
+  }
+
+  return (
+    <Card>
+      <div className="card-title-row">
+        <div>
+          <span className="section-eyebrow">
+            {editingItem ? "Editar reserva" : "Novo valor"}
+          </span>
+          <h3>{editingItem ? "Atualizar valor guardado" : "Adicionar reserva"}</h3>
+        </div>
+
+        <Plus size={22} />
+      </div>
+
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Nome</span>
+          <input
+            name="title"
+            value={form.title}
+            placeholder="Ex: Nubank, Ailos, Inter..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Onde está guardado</span>
+          <input
+            name="place"
+            value={form.place}
+            placeholder="Ex: Caixinha, CDB, conta corrente..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Valor</span>
+          <input
+            name="amount"
+            value={form.amount}
+            inputMode="decimal"
+            placeholder="13000"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Data</span>
+          <input
+            name="date"
+            value={form.date}
+            type="date"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field field-full">
+          <span>Observação</span>
+          <textarea
+            name="note"
+            value={form.note}
+            rows={3}
+            placeholder="Ex: dinheiro reservado exclusivamente para a Espanha."
+            onChange={handleChange}
+          />
+        </label>
+
+        <div className="form-actions field-full">
+          {editingItem && (
+            <button className="button ghost" type="button" onClick={onCancel}>
+              Cancelar
+            </button>
+          )}
+
+          <button className="button primary" type="submit">
+            {editingItem ? "Salvar alteração" : "Adicionar valor"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function ReservaPage({ savings, setSavings }) {
+  const [editingItem, setEditingItem] = useState(null);
+
+  const totalSaved = useMemo(() => {
+    return savings.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  }, [savings]);
+
+  function handleSave(item) {
+    setSavings((current) => {
+      const exists = current.some((saving) => saving.id === item.id);
+
+      if (exists) {
+        return current.map((saving) => (saving.id === item.id ? item : saving));
+      }
+
+      return [item, ...current];
+    });
+
+    setEditingItem(null);
+  }
+
+  function handleDelete(item) {
+    const confirmDelete = window.confirm(`Excluir "${item.title}" da reserva?`);
+
+    if (!confirmDelete) return;
+
+    setSavings((current) => current.filter((saving) => saving.id !== item.id));
+  }
+
   return (
     <>
       <PageHeader
         eyebrow="Reserva Espanha"
         title="Seu dinheiro para a mudança"
-        description="Aqui vai entrar apenas o dinheiro separado para o plano Espanha."
+        description="Cadastre apenas valores que fazem parte do plano Espanha. Nada de controle financeiro geral aqui."
+      />
+
+      <section className="stats-grid">
+        <StatCard
+          label="Total guardado"
+          value={formatBRL(totalSaved)}
+          helper="Soma da reserva em reais"
+        />
+
+        <StatCard
+          label="Meta Espanha"
+          value={formatBRL(initialData.goalBRL)}
+          helper="Objetivo financeiro principal"
+        />
+
+        <StatCard
+          label="Falta juntar"
+          value={formatBRL(Math.max(initialData.goalBRL - totalSaved, 0))}
+          helper="Diferença até a meta"
+        />
+      </section>
+
+      <SavingsForm
+        editingItem={editingItem}
+        onSave={handleSave}
+        onCancel={() => setEditingItem(null)}
       />
 
       <Card>
-        <span className="section-eyebrow">Em breve</span>
-        <h3>Cadastro da reserva</h3>
-        <p className="muted">
-          Próximo passo: criar campos para Nubank, Ailos, Inter, Nomad/Wise e
-          outros valores guardados para a Espanha.
-        </p>
+        <div className="card-title-row">
+          <div>
+            <span className="section-eyebrow">Reserva cadastrada</span>
+            <h3>Valores guardados</h3>
+          </div>
+
+          <Wallet size={22} />
+        </div>
+
+        {savings.length > 0 ? (
+          <div className="record-list">
+            {savings.map((item) => (
+              <div className="saving-row" key={item.id}>
+                <div className="saving-info">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.place || "Sem local informado"} • {formatDate(item.date)}
+                  </span>
+                  {item.note && <small>{item.note}</small>}
+                </div>
+
+                <div className="saving-actions">
+                  <strong>{formatBRL(item.amount)}</strong>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => setEditingItem(item)}
+                    aria-label="Editar"
+                  >
+                    <Pencil size={17} />
+                  </button>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => handleDelete(item)}
+                    aria-label="Excluir"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            Nenhum valor cadastrado ainda. Adicione sua primeira reserva para a
+            Espanha.
+          </p>
+        )}
       </Card>
     </>
   );
@@ -344,14 +644,24 @@ function PlanoPage() {
 
 export default function App() {
   const [activePage, setActivePage] = useState("inicio");
+  const [savings, setSavings] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.savings, defaultSavings)
+  );
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.savings, savings);
+  }, [savings]);
 
   function renderPage() {
-    if (activePage === "reserva") return <ReservaPage />;
+    if (activePage === "reserva") {
+      return <ReservaPage savings={savings} setSavings={setSavings} />;
+    }
+
     if (activePage === "euros") return <EurosPage />;
     if (activePage === "documentos") return <DocumentosPage />;
     if (activePage === "plano") return <PlanoPage />;
 
-    return <Dashboard />;
+    return <Dashboard savings={savings} />;
   }
 
   return (
