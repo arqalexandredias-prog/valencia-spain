@@ -12,6 +12,7 @@ import {
   Save,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 
 const STORAGE_KEYS = {
@@ -29,8 +30,7 @@ const defaultPlan = {
   targetDate: "2027-04-01",
   city: "Valência",
   country: "Espanha",
-  note:
-    "Juntar reserva, organizar documentos, comprar euros aos poucos e preparar a mudança com segurança.",
+  note: "",
   steps: [
     {
       id: 1,
@@ -42,7 +42,7 @@ const defaultPlan = {
       id: 2,
       title: "Atingir a reserva mínima",
       done: false,
-      note: "Construir a reserva em reais e euros para chegar com segurança.",
+      note: "Construir a reserva em reais e euros.",
     },
     {
       id: 3,
@@ -54,7 +54,7 @@ const defaultPlan = {
       id: 4,
       title: "Definir cidade e moradia inicial",
       done: false,
-      note: "Pesquisar custo de vida, aluguel, transporte e bairros.",
+      note: "Pesquisar aluguel, bairros e custo de vida.",
     },
   ],
 };
@@ -66,7 +66,7 @@ const defaultSavings = [
     place: "Dinheiro já guardado",
     amount: 13000,
     date: new Date().toISOString().slice(0, 10),
-    note: "Valor inicial cadastrado no VALENCIA.",
+    note: "",
   },
 ];
 
@@ -80,7 +80,7 @@ const defaultDocuments = [
     priority: "Alta",
     deadline: "",
     done: false,
-    note: "Ver validade e documentos necessários.",
+    note: "",
   },
   {
     id: 2,
@@ -89,7 +89,7 @@ const defaultDocuments = [
     priority: "Alta",
     deadline: "",
     done: false,
-    note: "Organizar certidões atualizadas.",
+    note: "",
   },
   {
     id: 3,
@@ -98,7 +98,7 @@ const defaultDocuments = [
     priority: "Alta",
     deadline: "",
     done: false,
-    note: "Separar documentos que precisam de apostila.",
+    note: "",
   },
   {
     id: 4,
@@ -107,7 +107,7 @@ const defaultDocuments = [
     priority: "Média",
     deadline: "",
     done: false,
-    note: "Reunir diploma, histórico e comprovações.",
+    note: "",
   },
   {
     id: 5,
@@ -116,7 +116,7 @@ const defaultDocuments = [
     priority: "Média",
     deadline: "",
     done: false,
-    note: "Preparar versão voltada para Espanha.",
+    note: "",
   },
   {
     id: 6,
@@ -125,7 +125,7 @@ const defaultDocuments = [
     priority: "Alta",
     deadline: "",
     done: false,
-    note: "Guardar extratos e comprovantes da reserva.",
+    note: "",
   },
 ];
 
@@ -146,7 +146,7 @@ const defaultCosts = [
     amount: 7000,
     priority: "Alta",
     paid: false,
-    note: "Primeiro aluguel ou entrada inicial.",
+    note: "",
   },
   {
     id: 3,
@@ -155,7 +155,7 @@ const defaultCosts = [
     amount: 14000,
     priority: "Alta",
     paid: false,
-    note: "Possível caução de 1 a 2 meses.",
+    note: "",
   },
   {
     id: 4,
@@ -164,7 +164,7 @@ const defaultCosts = [
     amount: 5000,
     priority: "Média",
     paid: false,
-    note: "Primeiros meses de adaptação.",
+    note: "",
   },
   {
     id: 5,
@@ -173,7 +173,7 @@ const defaultCosts = [
     amount: 4000,
     priority: "Alta",
     paid: false,
-    note: "Certidões, apostilamento, traduções e taxas.",
+    note: "",
   },
   {
     id: 6,
@@ -182,7 +182,7 @@ const defaultCosts = [
     amount: 22000,
     priority: "Alta",
     paid: false,
-    note: "Valor para chegar com mais tranquilidade.",
+    note: "",
   },
 ];
 
@@ -198,7 +198,6 @@ const navItems = [
 function loadFromStorage(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-
     if (!raw) return fallback;
 
     const parsed = JSON.parse(raw);
@@ -241,9 +240,7 @@ function parseMoney(value) {
 
   const parsed = Number(normalized);
 
-  if (!Number.isFinite(parsed) || Number.isNaN(parsed)) {
-    return 0;
-  }
+  if (!Number.isFinite(parsed) || Number.isNaN(parsed)) return 0;
 
   return parsed;
 }
@@ -319,12 +316,7 @@ function getEuroSummary(euroPurchases, euroRate) {
   const averageRate = totalEUR > 0 ? totalBRL / totalEUR : 0;
   const currentValueBRL = totalEUR * Number(euroRate || 0);
 
-  return {
-    totalEUR,
-    totalBRL,
-    averageRate,
-    currentValueBRL,
-  };
+  return { totalEUR, totalBRL, averageRate, currentValueBRL };
 }
 
 function getDocumentsSummary(documents) {
@@ -333,12 +325,7 @@ function getDocumentsSummary(documents) {
   const pending = Math.max(total - done, 0);
   const progress = total > 0 ? (done / total) * 100 : 0;
 
-  return {
-    total,
-    done,
-    pending,
-    progress,
-  };
+  return { total, done, pending, progress };
 }
 
 function getStepsSummary(steps = []) {
@@ -347,12 +334,7 @@ function getStepsSummary(steps = []) {
   const pending = Math.max(total - done, 0);
   const progress = total > 0 ? (done / total) * 100 : 0;
 
-  return {
-    total,
-    done,
-    pending,
-    progress,
-  };
+  return { total, done, pending, progress };
 }
 
 function getCostsSummary(costs = []) {
@@ -363,19 +345,11 @@ function getCostsSummary(costs = []) {
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const pending = Math.max(total - paid, 0);
-
   const paidItems = costs.filter((item) => item.paid).length;
   const totalItems = costs.length;
   const progress = totalItems > 0 ? (paidItems / totalItems) * 100 : 0;
 
-  return {
-    total,
-    paid,
-    pending,
-    totalItems,
-    paidItems,
-    progress,
-  };
+  return { total, paid, pending, totalItems, paidItems, progress };
 }
 
 function AppShell({ activePage, setActivePage, children }) {
@@ -409,7 +383,6 @@ function AppShell({ activePage, setActivePage, children }) {
               <span className="nav-icon">
                 <Icon size={19} />
               </span>
-
               <span>{item.label}</span>
             </button>
           );
@@ -419,28 +392,21 @@ function AppShell({ activePage, setActivePage, children }) {
   );
 }
 
-function PageHeader({ eyebrow, title, description }) {
+function PageHeader({ eyebrow, title, right }) {
   return (
-    <section className="page-header">
-      <span>{eyebrow}</span>
-      <h1>{title}</h1>
-      <p>{description}</p>
+    <section className="page-header clean-page-header">
+      <div>
+        <span>{eyebrow}</span>
+        <h1>{title}</h1>
+      </div>
+
+      {right}
     </section>
   );
 }
 
 function Card({ children, className = "" }) {
   return <section className={`card ${className}`}>{children}</section>;
-}
-
-function StatCard({ label, value, helper }) {
-  return (
-    <Card>
-      <span className="stat-label">{label}</span>
-      <strong className="stat-value">{value}</strong>
-      <p className="stat-helper">{helper}</p>
-    </Card>
-  );
 }
 
 function ProgressBar({ value }) {
@@ -453,12 +419,56 @@ function ProgressBar({ value }) {
   );
 }
 
+function SummaryStrip({ items }) {
+  return (
+    <Card className="summary-strip">
+      {items.map((item) => (
+        <div className="summary-item" key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+function MetricCard({ label, value, helper }) {
+  return (
+    <Card className="metric-card">
+      <span className="stat-label">{label}</span>
+      <strong>{value}</strong>
+      {helper && <small>{helper}</small>}
+    </Card>
+  );
+}
+
+function AddButton({ children, onClick, active }) {
+  return (
+    <button
+      className={active ? "button ghost" : "button primary"}
+      type="button"
+      onClick={onClick}
+    >
+      {active ? <X size={17} /> : <Plus size={17} />}
+      {children}
+    </button>
+  );
+}
+
+function SectionTitle({ eyebrow, title }) {
+  return (
+    <div className="section-title">
+      <span className="section-eyebrow">{eyebrow}</span>
+      <h3>{title}</h3>
+    </div>
+  );
+}
+
 function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
   const summary = useMemo(() => {
     const savedBRL = getSavingsTotal(savings);
     const euroSummary = getEuroSummary(euroPurchases, plan.euroRate);
     const docsSummary = getDocumentsSummary(documents);
-    const stepsSummary = getStepsSummary(plan.steps);
     const costsSummary = getCostsSummary(costs);
 
     const totalSaved = savedBRL + euroSummary.currentValueBRL;
@@ -474,7 +484,6 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
       missing,
       progress,
       docsSummary,
-      stepsSummary,
       costsSummary,
       ...euroSummary,
     };
@@ -482,119 +491,51 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Plano Espanha"
-        title="Quanto falta para ir embora?"
-        description="O VALENCIA agora existe para uma única missão: organizar sua preparação para viver na Espanha."
-      />
+      <PageHeader eyebrow="Plano Espanha" title="Quanto falta para ir embora?" />
 
-      <Card className="hero-card">
+      <Card className="hero-card clean-hero-card">
         <div className="hero-grid">
           <div>
             <span className="section-eyebrow">Meta principal</span>
             <h2>{Math.round(summary.progress)}%</h2>
             <p>
-              Você já tem <strong>{formatBRL(summary.totalSaved)}</strong>{" "}
-              preparados para a Espanha.
+              <strong>{formatBRL(summary.totalSaved)}</strong> preparados
             </p>
           </div>
 
           <div className="hero-missing">
-            <span>Falta juntar</span>
+            <span>Falta</span>
             <strong>{formatBRL(summary.missing)}</strong>
           </div>
         </div>
 
         <ProgressBar value={summary.progress} />
-
-        <div className="hero-footer">
-          <span>Meta: {formatBRL(plan.goalBRL)}</span>
-          <span>Destino: {plan.city}</span>
-          <span>Data-alvo: {formatMonthYear(plan.targetDate)}</span>
-        </div>
       </Card>
 
-      <section className="stats-grid">
-        <StatCard
+      <section className="compact-metrics">
+        <MetricCard
           label="Guardado"
           value={formatBRL(summary.savedBRL)}
-          helper="Reserva em reais para a mudança"
+          helper="Reserva"
         />
 
-        <StatCard
+        <MetricCard
           label="Euros"
           value={formatEUR(summary.totalEUR)}
-          helper={`Valor atual: ${formatBRL(summary.currentValueBRL)}`}
+          helper={formatBRL(summary.currentValueBRL)}
         />
 
-        <StatCard
-          label="Documentos"
-          value={`${Math.round(summary.docsSummary.progress)}%`}
-          helper={`${summary.docsSummary.done} de ${summary.docsSummary.total} concluídos`}
+        <MetricCard
+          label="Docs"
+          value={`${summary.docsSummary.done}/${summary.docsSummary.total}`}
+          helper={`${Math.round(summary.docsSummary.progress)}%`}
         />
-      </section>
 
-      <section className="content-grid">
-        <Card>
-          <div className="card-title-row">
-            <div>
-              <span className="section-eyebrow">Próxima ação</span>
-              <h3>
-                {summary.docsSummary.progress < 100
-                  ? "Avançar nos documentos essenciais"
-                  : summary.stepsSummary.progress < 100
-                    ? "Avançar nas etapas do plano"
-                    : "Revisar seu plano final"}
-              </h3>
-            </div>
-
-            <CheckCircle2 size={22} />
-          </div>
-
-          <p className="muted">
-            {summary.docsSummary.progress < 100
-              ? "A parte financeira está andando, mas os documentos precisam caminhar junto. Priorize passaporte, certidões, diploma, currículo, portfólio e comprovantes financeiros."
-              : summary.stepsSummary.progress < 100
-                ? "Agora foque nas etapas principais: reserva, euros, cidade, moradia inicial e prazo realista."
-                : "Seu plano está bem encaminhado. Agora vale revisar prazos, valores, documentos e próximos passos antes da mudança."}
-          </p>
-        </Card>
-
-        <Card>
-          <span className="section-eyebrow">Resumo</span>
-
-          <div className="record-list">
-            <div className="record-row">
-              <span>Meta Espanha</span>
-              <strong>{formatBRL(plan.goalBRL)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Reserva em reais</span>
-              <strong>{formatBRL(summary.savedBRL)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Euros convertidos</span>
-              <strong>{formatBRL(summary.currentValueBRL)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Custo estimado</span>
-              <strong>{formatBRL(summary.costsSummary.total)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Preparado hoje</span>
-              <strong>{formatBRL(summary.totalSaved)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Falta</span>
-              <strong>{formatBRL(summary.missing)}</strong>
-            </div>
-          </div>
-        </Card>
+        <MetricCard
+          label="Custos"
+          value={formatBRL(summary.costsSummary.total)}
+          helper="Estimativa"
+        />
       </section>
     </>
   );
@@ -633,15 +574,8 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
 
     const amount = parseMoney(form.amount);
 
-    if (!form.title.trim()) {
-      alert("Informe um nome para esse valor.");
-      return;
-    }
-
-    if (amount <= 0) {
-      alert("Informe um valor maior que zero.");
-      return;
-    }
+    if (!form.title.trim()) return alert("Informe um nome.");
+    if (amount <= 0) return alert("Informe um valor maior que zero.");
 
     onSave({
       ...editingItem,
@@ -664,18 +598,10 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">
-            {editingItem ? "Editar reserva" : "Novo valor"}
-          </span>
-          <h3>
-            {editingItem ? "Atualizar valor guardado" : "Adicionar reserva"}
-          </h3>
-        </div>
-
-        <Plus size={22} />
-      </div>
+      <SectionTitle
+        eyebrow={editingItem ? "Editar" : "Novo"}
+        title={editingItem ? "Atualizar reserva" : "Adicionar reserva"}
+      />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -683,17 +609,17 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
           <input
             name="title"
             value={form.title}
-            placeholder="Ex: Nubank, Ailos, Inter..."
+            placeholder="Nubank, Ailos, Inter..."
             onChange={handleChange}
           />
         </label>
 
         <label className="field">
-          <span>Onde está guardado</span>
+          <span>Local</span>
           <input
             name="place"
             value={form.place}
-            placeholder="Ex: Caixinha, CDB, conta corrente..."
+            placeholder="Caixinha, CDB, conta..."
             onChange={handleChange}
           />
         </label>
@@ -720,12 +646,11 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
         </label>
 
         <label className="field field-full">
-          <span>Observação</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
             rows={3}
-            placeholder="Ex: dinheiro reservado exclusivamente para a Espanha."
             onChange={handleChange}
           />
         </label>
@@ -738,7 +663,7 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
           )}
 
           <button className="button primary" type="submit">
-            {editingItem ? "Salvar alteração" : "Adicionar valor"}
+            Salvar
           </button>
         </div>
       </form>
@@ -748,10 +673,10 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
 
 function ReservaPage({ savings, setSavings, plan }) {
   const [editingItem, setEditingItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const totalSaved = useMemo(() => {
-    return getSavingsTotal(savings);
-  }, [savings]);
+  const totalSaved = useMemo(() => getSavingsTotal(savings), [savings]);
+  const missing = Math.max(Number(plan.goalBRL || 0) - totalSaved, 0);
 
   function handleSave(item) {
     setSavings((current) => {
@@ -765,59 +690,58 @@ function ReservaPage({ savings, setSavings, plan }) {
     });
 
     setEditingItem(null);
+    setShowForm(false);
   }
 
   function handleDelete(item) {
-    const confirmDelete = window.confirm(`Excluir "${item.title}" da reserva?`);
-
-    if (!confirmDelete) return;
+    if (!window.confirm(`Excluir "${item.title}"?`)) return;
 
     setSavings((current) => current.filter((saving) => saving.id !== item.id));
+  }
+
+  function handleEdit(item) {
+    setEditingItem(item);
+    setShowForm(true);
   }
 
   return (
     <>
       <PageHeader
-        eyebrow="Reserva Espanha"
-        title="Seu dinheiro para a mudança"
-        description="Cadastre apenas valores que fazem parte do plano Espanha. Nada de controle financeiro geral aqui."
+        eyebrow="Reserva"
+        title={formatBRL(totalSaved)}
+        right={
+          <AddButton
+            active={showForm}
+            onClick={() => {
+              setEditingItem(null);
+              setShowForm((current) => !current);
+            }}
+          >
+            {showForm ? "Fechar" : "Adicionar"}
+          </AddButton>
+        }
       />
 
-      <section className="stats-grid">
-        <StatCard
-          label="Total guardado"
-          value={formatBRL(totalSaved)}
-          helper="Soma da reserva em reais"
-        />
-
-        <StatCard
-          label="Meta Espanha"
-          value={formatBRL(plan.goalBRL)}
-          helper="Objetivo financeiro principal"
-        />
-
-        <StatCard
-          label="Falta juntar"
-          value={formatBRL(Math.max(Number(plan.goalBRL || 0) - totalSaved, 0))}
-          helper="Diferença até a meta"
-        />
-      </section>
-
-      <SavingsForm
-        editingItem={editingItem}
-        onSave={handleSave}
-        onCancel={() => setEditingItem(null)}
+      <SummaryStrip
+        items={[
+          { label: "Meta", value: formatBRL(plan.goalBRL) },
+          { label: "Falta", value: formatBRL(missing) },
+        ]}
       />
+
+      {showForm && (
+        <SavingsForm
+          editingItem={editingItem}
+          onSave={handleSave}
+          onCancel={() => {
+            setEditingItem(null);
+            setShowForm(false);
+          }}
+        />
+      )}
 
       <Card>
-        <div className="card-title-row">
-          <div>
-            <span className="section-eyebrow">Reserva cadastrada</span>
-            <h3>Valores guardados</h3>
-          </div>
-
-          <Wallet size={22} />
-        </div>
+        <SectionTitle eyebrow="Lista" title="Valores guardados" />
 
         {savings.length > 0 ? (
           <div className="record-list">
@@ -826,8 +750,7 @@ function ReservaPage({ savings, setSavings, plan }) {
                 <div className="saving-info">
                   <strong>{item.title}</strong>
                   <span>
-                    {item.place || "Sem local informado"} •{" "}
-                    {formatDate(item.date)}
+                    {item.place || "Sem local"} · {formatDate(item.date)}
                   </span>
                   {item.note && <small>{item.note}</small>}
                 </div>
@@ -838,8 +761,7 @@ function ReservaPage({ savings, setSavings, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => setEditingItem(item)}
-                    aria-label="Editar"
+                    onClick={() => handleEdit(item)}
                   >
                     <Pencil size={17} />
                   </button>
@@ -848,7 +770,6 @@ function ReservaPage({ savings, setSavings, plan }) {
                     className="icon-button"
                     type="button"
                     onClick={() => handleDelete(item)}
-                    aria-label="Excluir"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -857,10 +778,7 @@ function ReservaPage({ savings, setSavings, plan }) {
             ))}
           </div>
         ) : (
-          <p className="muted">
-            Nenhum valor cadastrado ainda. Adicione sua primeira reserva para a
-            Espanha.
-          </p>
+          <p className="muted">Nenhum valor cadastrado.</p>
         )}
       </Card>
     </>
@@ -889,7 +807,6 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
       amountEUR,
       rate,
       amountBRL: typedBRL > 0 ? typedBRL : calculatedBRL,
-      calculatedBRL,
     };
   }, [form]);
 
@@ -923,15 +840,8 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
     const amountBRLTyped = parseMoney(form.amountBRL);
     const amountBRL = amountBRLTyped > 0 ? amountBRLTyped : amountEUR * rate;
 
-    if (amountEUR <= 0) {
-      alert("Informe a quantidade de euros comprados.");
-      return;
-    }
-
-    if (rate <= 0) {
-      alert("Informe a cotação usada.");
-      return;
-    }
+    if (amountEUR <= 0) return alert("Informe os euros.");
+    if (rate <= 0) return alert("Informe a cotação.");
 
     onSave({
       ...editingItem,
@@ -956,35 +866,29 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">
-            {editingItem ? "Editar compra" : "Nova compra"}
-          </span>
-          <h3>{editingItem ? "Atualizar euros" : "Adicionar compra de euro"}</h3>
-        </div>
-
-        <Euro size={22} />
-      </div>
+      <SectionTitle
+        eyebrow={editingItem ? "Editar" : "Novo"}
+        title={editingItem ? "Atualizar compra" : "Adicionar euros"}
+      />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
-          <span>Conta usada</span>
+          <span>Conta</span>
           <input
             name="account"
             value={form.account}
-            placeholder="Ex: Nomad, Wise, banco..."
+            placeholder="Nomad, Wise..."
             onChange={handleChange}
           />
         </label>
 
         <label className="field">
-          <span>Quantidade em €</span>
+          <span>Euros</span>
           <input
             name="amountEUR"
             value={form.amountEUR}
             inputMode="decimal"
-            placeholder="500"
+            placeholder="100"
             onChange={handleChange}
           />
         </label>
@@ -1001,12 +905,12 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
         </label>
 
         <label className="field">
-          <span>Valor pago em R$</span>
+          <span>Pago em R$</span>
           <input
             name="amountBRL"
             value={form.amountBRL}
             inputMode="decimal"
-            placeholder="Opcional. Ex: 2950"
+            placeholder="Opcional"
             onChange={handleChange}
           />
         </label>
@@ -1022,36 +926,22 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
         </label>
 
         <label className="field field-full">
-          <span>Observação</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
             rows={3}
-            placeholder="Ex: compra feita aos poucos para reduzir risco do câmbio."
             onChange={handleChange}
           />
         </label>
 
-        <Card className="field-full preview-card">
-          <span className="section-eyebrow">Prévia</span>
-
-          <div className="record-list">
-            <div className="record-row">
-              <span>Euros comprados</span>
-              <strong>{formatEURWithCents(preview.amountEUR)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Cotação usada</span>
-              <strong>{formatBRLWithCents(preview.rate)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Valor em reais</span>
-              <strong>{formatBRLWithCents(preview.amountBRL)}</strong>
-            </div>
-          </div>
-        </Card>
+        <SummaryStrip
+          items={[
+            { label: "Euros", value: formatEURWithCents(preview.amountEUR) },
+            { label: "Cotação", value: formatBRLWithCents(preview.rate) },
+            { label: "Total", value: formatBRLWithCents(preview.amountBRL) },
+          ]}
+        />
 
         <div className="form-actions field-full">
           {editingItem && (
@@ -1061,7 +951,7 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
           )}
 
           <button className="button primary" type="submit">
-            {editingItem ? "Salvar alteração" : "Adicionar compra"}
+            Salvar
           </button>
         </div>
       </form>
@@ -1071,10 +961,12 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
 
 function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
   const [editingItem, setEditingItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const summary = useMemo(() => {
-    return getEuroSummary(euroPurchases, plan.euroRate);
-  }, [euroPurchases, plan.euroRate]);
+  const summary = useMemo(
+    () => getEuroSummary(euroPurchases, plan.euroRate),
+    [euroPurchases, plan.euroRate]
+  );
 
   function handleSave(item) {
     setEuroPurchases((current) => {
@@ -1090,68 +982,68 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
     });
 
     setEditingItem(null);
+    setShowForm(false);
   }
 
   function handleDelete(item) {
-    const confirmDelete = window.confirm(
-      `Excluir compra de ${formatEURWithCents(item.amountEUR)}?`
-    );
-
-    if (!confirmDelete) return;
+    if (!window.confirm(`Excluir ${formatEURWithCents(item.amountEUR)}?`)) return;
 
     setEuroPurchases((current) =>
       current.filter((purchase) => purchase.id !== item.id)
     );
   }
 
+  function handleEdit(item) {
+    setEditingItem(item);
+    setShowForm(true);
+  }
+
   return (
     <>
       <PageHeader
-        eyebrow="Compra de euros"
-        title="Controle dos euros comprados"
-        description="Registre apenas euros comprados para a Espanha. Aqui não entra gasto comum, cartão ou financeiro geral."
+        eyebrow="Euros"
+        title={formatEUR(summary.totalEUR)}
+        right={
+          <AddButton
+            active={showForm}
+            onClick={() => {
+              setEditingItem(null);
+              setShowForm((current) => !current);
+            }}
+          >
+            {showForm ? "Fechar" : "Adicionar"}
+          </AddButton>
+        }
       />
 
-      <section className="stats-grid">
-        <StatCard
-          label="Euros comprados"
-          value={formatEUR(summary.totalEUR)}
-          helper={`Meta: ${formatEUR(plan.goalEUR)}`}
-        />
-
-        <StatCard
-          label="Valor pago"
-          value={formatBRL(summary.totalBRL)}
-          helper="Total pago em reais"
-        />
-
-        <StatCard
-          label="Cotação média"
-          value={
-            summary.averageRate > 0
-              ? formatBRLWithCents(summary.averageRate)
-              : "R$ 0,00"
-          }
-          helper={`Base atual: ${formatBRLWithCents(plan.euroRate)}`}
-        />
-      </section>
-
-      <EuroForm
-        editingItem={editingItem}
-        euroRate={plan.euroRate}
-        onSave={handleSave}
-        onCancel={() => setEditingItem(null)}
+      <SummaryStrip
+        items={[
+          { label: "Pago", value: formatBRL(summary.totalBRL) },
+          {
+            label: "Média",
+            value:
+              summary.averageRate > 0
+                ? formatBRLWithCents(summary.averageRate)
+                : "R$ 0,00",
+          },
+          { label: "Meta", value: formatEUR(plan.goalEUR) },
+        ]}
       />
+
+      {showForm && (
+        <EuroForm
+          editingItem={editingItem}
+          euroRate={plan.euroRate}
+          onSave={handleSave}
+          onCancel={() => {
+            setEditingItem(null);
+            setShowForm(false);
+          }}
+        />
+      )}
 
       <Card>
-        <div className="card-title-row">
-          <div>
-            <span className="section-eyebrow">Histórico</span>
-            <h3>Compras de euro</h3>
-          </div>
-
-          <Landmark size={22} />
-        </div>
+        <SectionTitle eyebrow="Histórico" title="Compras" />
 
         {euroPurchases.length > 0 ? (
           <div className="record-list">
@@ -1160,8 +1052,7 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
                 <div className="saving-info">
                   <strong>{item.account}</strong>
                   <span>
-                    {formatDate(item.date)} • Cotação{" "}
-                    {formatBRLWithCents(item.rate)}
+                    {formatDate(item.date)} · {formatBRLWithCents(item.rate)}
                   </span>
                   {item.note && <small>{item.note}</small>}
                 </div>
@@ -1175,8 +1066,7 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => setEditingItem(item)}
-                    aria-label="Editar"
+                    onClick={() => handleEdit(item)}
                   >
                     <Pencil size={17} />
                   </button>
@@ -1185,7 +1075,6 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
                     className="icon-button"
                     type="button"
                     onClick={() => handleDelete(item)}
-                    aria-label="Excluir"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1194,10 +1083,7 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
             ))}
           </div>
         ) : (
-          <p className="muted">
-            Nenhuma compra de euro cadastrada ainda. Quando comprar euro na
-            Nomad, Wise ou outro banco, registre aqui.
-          </p>
+          <p className="muted">Nenhuma compra cadastrada.</p>
         )}
       </Card>
     </>
@@ -1237,10 +1123,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.title.trim()) {
-      alert("Informe o nome do documento.");
-      return;
-    }
+    if (!form.title.trim()) return alert("Informe o documento.");
 
     onSave({
       ...editingItem,
@@ -1265,20 +1148,10 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">
-            {editingItem ? "Editar documento" : "Novo documento"}
-          </span>
-          <h3>
-            {editingItem
-              ? "Atualizar item do checklist"
-              : "Adicionar documento"}
-          </h3>
-        </div>
-
-        <FileText size={22} />
-      </div>
+      <SectionTitle
+        eyebrow={editingItem ? "Editar" : "Novo"}
+        title={editingItem ? "Atualizar documento" : "Adicionar documento"}
+      />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -1286,7 +1159,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
           <input
             name="title"
             value={form.title}
-            placeholder="Ex: Passaporte, certidão, diploma..."
+            placeholder="Passaporte, certidão..."
             onChange={handleChange}
           />
         </label>
@@ -1296,7 +1169,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
           <input
             name="category"
             value={form.category}
-            placeholder="Ex: Identificação, civil, trabalho..."
+            placeholder="Identificação, trabalho..."
             onChange={handleChange}
           />
         </label>
@@ -1331,16 +1204,15 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
             type="checkbox"
             onChange={handleChange}
           />
-          <span>Marcar como concluído</span>
+          <span>Concluído</span>
         </label>
 
         <label className="field field-full">
-          <span>Observação</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
             rows={3}
-            placeholder="Ex: precisa atualizar, apostilar, traduzir ou separar cópia."
             onChange={handleChange}
           />
         </label>
@@ -1353,7 +1225,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
           )}
 
           <button className="button primary" type="submit">
-            {editingItem ? "Salvar alteração" : "Adicionar documento"}
+            Salvar
           </button>
         </div>
       </form>
@@ -1363,23 +1235,15 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
 
 function DocumentosPage({ documents, setDocuments }) {
   const [editingItem, setEditingItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const summary = useMemo(() => {
-    return getDocumentsSummary(documents);
-  }, [documents]);
+  const summary = useMemo(() => getDocumentsSummary(documents), [documents]);
 
   const sortedDocuments = useMemo(() => {
-    const priorityOrder = {
-      Alta: 1,
-      Média: 2,
-      Baixa: 3,
-    };
+    const priorityOrder = { Alta: 1, Média: 2, Baixa: 3 };
 
     return [...documents].sort((a, b) => {
-      if (a.done !== b.done) {
-        return a.done ? 1 : -1;
-      }
-
+      if (a.done !== b.done) return a.done ? 1 : -1;
       return (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9);
     });
   }, [documents]);
@@ -1398,12 +1262,11 @@ function DocumentosPage({ documents, setDocuments }) {
     });
 
     setEditingItem(null);
+    setShowForm(false);
   }
 
   function handleDelete(item) {
-    const confirmDelete = window.confirm(`Excluir "${item.title}"?`);
-
-    if (!confirmDelete) return;
+    if (!window.confirm(`Excluir "${item.title}"?`)) return;
 
     setDocuments((current) =>
       current.filter((document) => document.id !== item.id)
@@ -1414,65 +1277,52 @@ function DocumentosPage({ documents, setDocuments }) {
     setDocuments((current) =>
       current.map((document) =>
         document.id === item.id
-          ? {
-              ...document,
-              done: !document.done,
-            }
+          ? { ...document, done: !document.done }
           : document
       )
     );
+  }
+
+  function handleEdit(item) {
+    setEditingItem(item);
+    setShowForm(true);
   }
 
   return (
     <>
       <PageHeader
         eyebrow="Documentos"
-        title="Checklist da imigração"
-        description="Organize documentos, comprovantes e pendências importantes para a Espanha."
+        title={`${summary.done}/${summary.total}`}
+        right={
+          <AddButton
+            active={showForm}
+            onClick={() => {
+              setEditingItem(null);
+              setShowForm((current) => !current);
+            }}
+          >
+            {showForm ? "Fechar" : "Adicionar"}
+          </AddButton>
+        }
       />
 
-      <section className="stats-grid">
-        <StatCard
-          label="Progresso"
-          value={`${Math.round(summary.progress)}%`}
-          helper={`${summary.done} de ${summary.total} concluídos`}
-        />
-
-        <StatCard
-          label="Pendentes"
-          value={String(summary.pending)}
-          helper="Itens que ainda precisam andar"
-        />
-
-        <StatCard
-          label="Concluídos"
-          value={String(summary.done)}
-          helper="Documentos já resolvidos"
-        />
-      </section>
-
-      <Card>
-        <span className="section-eyebrow">Progresso documental</span>
-        <div style={{ marginTop: 14 }}>
-          <ProgressBar value={summary.progress} />
-        </div>
+      <Card className="compact-progress-card">
+        <ProgressBar value={summary.progress} />
       </Card>
 
-      <DocumentForm
-        editingItem={editingItem}
-        onSave={handleSave}
-        onCancel={() => setEditingItem(null)}
-      />
+      {showForm && (
+        <DocumentForm
+          editingItem={editingItem}
+          onSave={handleSave}
+          onCancel={() => {
+            setEditingItem(null);
+            setShowForm(false);
+          }}
+        />
+      )}
 
       <Card>
-        <div className="card-title-row">
-          <div>
-            <span className="section-eyebrow">Checklist</span>
-            <h3>Documentos cadastrados</h3>
-          </div>
-
-          <FileText size={22} />
-        </div>
+        <SectionTitle eyebrow="Checklist" title="Documentos" />
 
         {sortedDocuments.length > 0 ? (
           <div className="record-list">
@@ -1485,7 +1335,6 @@ function DocumentosPage({ documents, setDocuments }) {
                   className={item.done ? "check-button checked" : "check-button"}
                   type="button"
                   onClick={() => toggleDone(item)}
-                  aria-label="Marcar documento"
                 >
                   <CheckCircle2 size={19} />
                 </button>
@@ -1493,22 +1342,21 @@ function DocumentosPage({ documents, setDocuments }) {
                 <div className="saving-info">
                   <strong>{item.title}</strong>
                   <span>
-                    {item.category || "Geral"} • Prioridade {item.priority}
-                    {item.deadline ? ` • Prazo ${formatDate(item.deadline)}` : ""}
+                    {item.category || "Geral"} · {item.priority}
+                    {item.deadline ? ` · ${formatDate(item.deadline)}` : ""}
                   </span>
                   {item.note && <small>{item.note}</small>}
                 </div>
 
                 <div className="document-actions">
                   <strong className={item.done ? "success" : "warning"}>
-                    {item.done ? "Concluído" : "Pendente"}
+                    {item.done ? "OK" : "Pendente"}
                   </strong>
 
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => setEditingItem(item)}
-                    aria-label="Editar"
+                    onClick={() => handleEdit(item)}
                   >
                     <Pencil size={17} />
                   </button>
@@ -1517,7 +1365,6 @@ function DocumentosPage({ documents, setDocuments }) {
                     className="icon-button"
                     type="button"
                     onClick={() => handleDelete(item)}
-                    aria-label="Excluir"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1526,10 +1373,7 @@ function DocumentosPage({ documents, setDocuments }) {
             ))}
           </div>
         ) : (
-          <p className="muted">
-            Nenhum documento cadastrado ainda. Adicione o primeiro item do seu
-            checklist da Espanha.
-          </p>
+          <p className="muted">Nenhum documento cadastrado.</p>
         )}
       </Card>
     </>
@@ -1571,15 +1415,8 @@ function CostForm({ onSave, editingItem, onCancel }) {
 
     const amount = parseMoney(form.amount);
 
-    if (!form.title.trim()) {
-      alert("Informe o nome do custo.");
-      return;
-    }
-
-    if (amount <= 0) {
-      alert("Informe um valor maior que zero.");
-      return;
-    }
+    if (!form.title.trim()) return alert("Informe o custo.");
+    if (amount <= 0) return alert("Informe um valor maior que zero.");
 
     onSave({
       ...editingItem,
@@ -1604,18 +1441,10 @@ function CostForm({ onSave, editingItem, onCancel }) {
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">
-            {editingItem ? "Editar custo" : "Novo custo"}
-          </span>
-          <h3>
-            {editingItem ? "Atualizar custo da mudança" : "Adicionar custo"}
-          </h3>
-        </div>
-
-        <Calculator size={22} />
-      </div>
+      <SectionTitle
+        eyebrow={editingItem ? "Editar" : "Novo"}
+        title={editingItem ? "Atualizar custo" : "Adicionar custo"}
+      />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -1623,7 +1452,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
           <input
             name="title"
             value={form.title}
-            placeholder="Ex: passagem, caução, seguro..."
+            placeholder="Passagem, caução..."
             onChange={handleChange}
           />
         </label>
@@ -1633,18 +1462,18 @@ function CostForm({ onSave, editingItem, onCancel }) {
           <input
             name="category"
             value={form.category}
-            placeholder="Ex: Moradia, viagem, documentos..."
+            placeholder="Moradia, viagem..."
             onChange={handleChange}
           />
         </label>
 
         <label className="field">
-          <span>Valor estimado</span>
+          <span>Valor</span>
           <input
             name="amount"
             value={form.amount}
             inputMode="decimal"
-            placeholder="Ex: 8000"
+            placeholder="8000"
             onChange={handleChange}
           />
         </label>
@@ -1669,16 +1498,15 @@ function CostForm({ onSave, editingItem, onCancel }) {
             type="checkbox"
             onChange={handleChange}
           />
-          <span>Marcar como resolvido / já separado</span>
+          <span>Resolvido</span>
         </label>
 
         <label className="field field-full">
-          <span>Observação</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
             rows={3}
-            placeholder="Ex: estimativa para duas pessoas, valor aproximado..."
             onChange={handleChange}
           />
         </label>
@@ -1691,7 +1519,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
           )}
 
           <button className="button primary" type="submit">
-            {editingItem ? "Salvar alteração" : "Adicionar custo"}
+            Salvar
           </button>
         </div>
       </form>
@@ -1701,23 +1529,15 @@ function CostForm({ onSave, editingItem, onCancel }) {
 
 function CustosPage({ costs, setCosts, plan }) {
   const [editingItem, setEditingItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
-  const summary = useMemo(() => {
-    return getCostsSummary(costs);
-  }, [costs]);
+  const summary = useMemo(() => getCostsSummary(costs), [costs]);
 
   const sortedCosts = useMemo(() => {
-    const priorityOrder = {
-      Alta: 1,
-      Média: 2,
-      Baixa: 3,
-    };
+    const priorityOrder = { Alta: 1, Média: 2, Baixa: 3 };
 
     return [...costs].sort((a, b) => {
-      if (a.paid !== b.paid) {
-        return a.paid ? 1 : -1;
-      }
-
+      if (a.paid !== b.paid) return a.paid ? 1 : -1;
       return (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9);
     });
   }, [costs]);
@@ -1734,12 +1554,11 @@ function CustosPage({ costs, setCosts, plan }) {
     });
 
     setEditingItem(null);
+    setShowForm(false);
   }
 
   function handleDelete(item) {
-    const confirmDelete = window.confirm(`Excluir "${item.title}"?`);
-
-    if (!confirmDelete) return;
+    if (!window.confirm(`Excluir "${item.title}"?`)) return;
 
     setCosts((current) => current.filter((cost) => cost.id !== item.id));
   }
@@ -1747,100 +1566,58 @@ function CustosPage({ costs, setCosts, plan }) {
   function togglePaid(item) {
     setCosts((current) =>
       current.map((cost) =>
-        cost.id === item.id
-          ? {
-              ...cost,
-              paid: !cost.paid,
-            }
-          : cost
+        cost.id === item.id ? { ...cost, paid: !cost.paid } : cost
       )
     );
+  }
+
+  function handleEdit(item) {
+    setEditingItem(item);
+    setShowForm(true);
   }
 
   return (
     <>
       <PageHeader
-        eyebrow="Custos da mudança"
-        title="Quanto custa ir para a Espanha?"
-        description="Estime os custos principais da imigração: viagem, moradia inicial, documentos, alimentação e reserva de segurança."
+        eyebrow="Custos"
+        title={formatBRL(summary.total)}
+        right={
+          <AddButton
+            active={showForm}
+            onClick={() => {
+              setEditingItem(null);
+              setShowForm((current) => !current);
+            }}
+          >
+            {showForm ? "Fechar" : "Adicionar"}
+          </AddButton>
+        }
       />
 
-      <section className="stats-grid">
-        <StatCard
-          label="Custo estimado"
-          value={formatBRL(summary.total)}
-          helper="Soma dos custos cadastrados"
-        />
-
-        <StatCard
-          label="Já separado"
-          value={formatBRL(summary.paid)}
-          helper={`${summary.paidItems} de ${summary.totalItems} itens resolvidos`}
-        />
-
-        <StatCard
-          label="Ainda falta"
-          value={formatBRL(summary.pending)}
-          helper={`Meta atual do plano: ${formatBRL(plan.goalBRL)}`}
-        />
-      </section>
-
-      <Card>
-        <span className="section-eyebrow">Progresso dos custos</span>
-        <div style={{ marginTop: 14 }}>
-          <ProgressBar value={summary.progress} />
-        </div>
-      </Card>
-
-      <section className="content-grid">
-        <Card>
-          <span className="section-eyebrow">Comparativo</span>
-
-          <div className="record-list">
-            <div className="record-row">
-              <span>Meta atual do plano</span>
-              <strong>{formatBRL(plan.goalBRL)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Custo estimado</span>
-              <strong>{formatBRL(summary.total)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Diferença</span>
-              <strong>
-                {formatBRL(Number(plan.goalBRL || 0) - summary.total)}
-              </strong>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <span className="section-eyebrow">Leitura rápida</span>
-          <p className="muted">
-            Esta tela ajuda a transformar a meta da Espanha em uma estimativa
-            real. Se os custos ficarem maiores que a meta, você já sabe que
-            precisa ajustar o plano antes de viajar.
-          </p>
-        </Card>
-      </section>
-
-      <CostForm
-        editingItem={editingItem}
-        onSave={handleSave}
-        onCancel={() => setEditingItem(null)}
+      <SummaryStrip
+        items={[
+          { label: "Meta", value: formatBRL(plan.goalBRL) },
+          {
+            label: "Diferença",
+            value: formatBRL(Number(plan.goalBRL || 0) - summary.total),
+          },
+          { label: "Resolvido", value: formatBRL(summary.paid) },
+        ]}
       />
 
-      <Card>
-        <div className="card-title-row">
-          <div>
-            <span className="section-eyebrow">Lista de custos</span>
-            <h3>Estimativa da mudança</h3>
-          </div>
+      {showForm && (
+        <CostForm
+          editingItem={editingItem}
+          onSave={handleSave}
+          onCancel={() => {
+            setEditingItem(null);
+            setShowForm(false);
+          }}
+        />
+      )}
 
-          <Calculator size={22} />
-        </div>
+      <Card>
+        <SectionTitle eyebrow="Lista" title="Estimativa" />
 
         {sortedCosts.length > 0 ? (
           <div className="record-list">
@@ -1853,7 +1630,6 @@ function CustosPage({ costs, setCosts, plan }) {
                   className={item.paid ? "check-button checked" : "check-button"}
                   type="button"
                   onClick={() => togglePaid(item)}
-                  aria-label="Marcar custo"
                 >
                   <CheckCircle2 size={19} />
                 </button>
@@ -1861,7 +1637,7 @@ function CustosPage({ costs, setCosts, plan }) {
                 <div className="saving-info">
                   <strong>{item.title}</strong>
                   <span>
-                    {item.category || "Geral"} • Prioridade {item.priority}
+                    {item.category || "Geral"} · {item.priority}
                   </span>
                   {item.note && <small>{item.note}</small>}
                 </div>
@@ -1872,8 +1648,7 @@ function CustosPage({ costs, setCosts, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => setEditingItem(item)}
-                    aria-label="Editar"
+                    onClick={() => handleEdit(item)}
                   >
                     <Pencil size={17} />
                   </button>
@@ -1882,7 +1657,6 @@ function CustosPage({ costs, setCosts, plan }) {
                     className="icon-button"
                     type="button"
                     onClick={() => handleDelete(item)}
-                    aria-label="Excluir"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1891,17 +1665,14 @@ function CustosPage({ costs, setCosts, plan }) {
             ))}
           </div>
         ) : (
-          <p className="muted">
-            Nenhum custo cadastrado ainda. Adicione a primeira estimativa da
-            mudança.
-          </p>
+          <p className="muted">Nenhum custo cadastrado.</p>
         )}
       </Card>
     </>
   );
 }
 
-function PlanForm({ plan, setPlan }) {
+function PlanForm({ plan, setPlan, onDone }) {
   const [form, setForm] = useState({
     city: plan.city || "",
     country: plan.country || "Espanha",
@@ -1940,20 +1711,9 @@ function PlanForm({ plan, setPlan }) {
     const goalEUR = parseMoney(form.goalEUR);
     const euroRate = parseMoney(form.euroRate);
 
-    if (!form.city.trim()) {
-      alert("Informe a cidade desejada.");
-      return;
-    }
-
-    if (goalBRL <= 0) {
-      alert("Informe uma meta em reais maior que zero.");
-      return;
-    }
-
-    if (euroRate <= 0) {
-      alert("Informe uma cotação base válida.");
-      return;
-    }
+    if (!form.city.trim()) return alert("Informe a cidade.");
+    if (goalBRL <= 0) return alert("Informe a meta.");
+    if (euroRate <= 0) return alert("Informe a cotação.");
 
     setPlan((current) => ({
       ...current,
@@ -1966,39 +1726,22 @@ function PlanForm({ plan, setPlan }) {
       note: form.note.trim(),
     }));
 
-    alert("Plano atualizado.");
+    onDone();
   }
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">Plano principal</span>
-          <h3>Editar estratégia da mudança</h3>
-        </div>
-
-        <Save size={22} />
-      </div>
+      <SectionTitle eyebrow="Plano" title="Editar" />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
-          <span>Cidade desejada</span>
-          <input
-            name="city"
-            value={form.city}
-            placeholder="Ex: Valência, Madrid, Barcelona..."
-            onChange={handleChange}
-          />
+          <span>Cidade</span>
+          <input name="city" value={form.city} onChange={handleChange} />
         </label>
 
         <label className="field">
           <span>País</span>
-          <input
-            name="country"
-            value={form.country}
-            placeholder="Espanha"
-            onChange={handleChange}
-          />
+          <input name="country" value={form.country} onChange={handleChange} />
         </label>
 
         <label className="field">
@@ -2012,52 +1755,48 @@ function PlanForm({ plan, setPlan }) {
         </label>
 
         <label className="field">
-          <span>Meta em reais</span>
+          <span>Meta R$</span>
           <input
             name="goalBRL"
             value={form.goalBRL}
             inputMode="decimal"
-            placeholder="60000"
             onChange={handleChange}
           />
         </label>
 
         <label className="field">
-          <span>Meta em euros</span>
+          <span>Meta €</span>
           <input
             name="goalEUR"
             value={form.goalEUR}
             inputMode="decimal"
-            placeholder="7000"
             onChange={handleChange}
           />
         </label>
 
         <label className="field">
-          <span>Cotação base</span>
+          <span>Cotação</span>
           <input
             name="euroRate"
             value={form.euroRate}
             inputMode="decimal"
-            placeholder="5,90"
             onChange={handleChange}
           />
         </label>
 
         <label className="field field-full">
-          <span>Observação do plano</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
-            rows={4}
-            placeholder="Ex: objetivo, motivo da mudança, estratégia financeira..."
+            rows={3}
             onChange={handleChange}
           />
         </label>
 
         <div className="form-actions field-full">
           <button className="button primary" type="submit">
-            Salvar plano
+            Salvar
           </button>
         </div>
       </form>
@@ -2065,11 +1804,8 @@ function PlanForm({ plan, setPlan }) {
   );
 }
 
-function StepForm({ onSave }) {
-  const [form, setForm] = useState({
-    title: "",
-    note: "",
-  });
+function StepForm({ onSave, onDone }) {
+  const [form, setForm] = useState({ title: "", note: "" });
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -2083,10 +1819,7 @@ function StepForm({ onSave }) {
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.title.trim()) {
-      alert("Informe o nome da etapa.");
-      return;
-    }
+    if (!form.title.trim()) return alert("Informe a etapa.");
 
     onSave({
       id: Date.now(),
@@ -2095,22 +1828,13 @@ function StepForm({ onSave }) {
       done: false,
     });
 
-    setForm({
-      title: "",
-      note: "",
-    });
+    setForm({ title: "", note: "" });
+    onDone();
   }
 
   return (
     <Card>
-      <div className="card-title-row">
-        <div>
-          <span className="section-eyebrow">Nova etapa</span>
-          <h3>Adicionar passo do plano</h3>
-        </div>
-
-        <Plus size={22} />
-      </div>
+      <SectionTitle eyebrow="Etapa" title="Adicionar" />
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -2118,25 +1842,24 @@ function StepForm({ onSave }) {
           <input
             name="title"
             value={form.title}
-            placeholder="Ex: pesquisar aluguel inicial"
+            placeholder="Pesquisar aluguel"
             onChange={handleChange}
           />
         </label>
 
         <label className="field field-full">
-          <span>Observação</span>
+          <span>Obs.</span>
           <textarea
             name="note"
             value={form.note}
             rows={3}
-            placeholder="Ex: o que precisa ser feito nesta etapa."
             onChange={handleChange}
           />
         </label>
 
         <div className="form-actions field-full">
           <button className="button primary" type="submit">
-            Adicionar etapa
+            Salvar
           </button>
         </div>
       </form>
@@ -2145,9 +1868,10 @@ function StepForm({ onSave }) {
 }
 
 function PlanoPage({ plan, setPlan }) {
-  const summary = useMemo(() => {
-    return getStepsSummary(plan.steps || []);
-  }, [plan.steps]);
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [showStepForm, setShowStepForm] = useState(false);
+
+  const summary = useMemo(() => getStepsSummary(plan.steps || []), [plan.steps]);
 
   function addStep(step) {
     setPlan((current) => ({
@@ -2166,9 +1890,7 @@ function PlanoPage({ plan, setPlan }) {
   }
 
   function deleteStep(step) {
-    const confirmDelete = window.confirm(`Excluir etapa "${step.title}"?`);
-
-    if (!confirmDelete) return;
+    if (!window.confirm(`Excluir "${step.title}"?`)) return;
 
     setPlan((current) => ({
       ...current,
@@ -2179,80 +1901,50 @@ function PlanoPage({ plan, setPlan }) {
   return (
     <>
       <PageHeader
-        eyebrow="Plano Espanha"
-        title="Estratégia da mudança"
-        description="Defina cidade, data-alvo, meta financeira, cotação base e etapas principais da imigração."
+        eyebrow="Plano"
+        title={plan.city}
+        right={
+          <AddButton
+            active={showPlanForm}
+            onClick={() => setShowPlanForm((current) => !current)}
+          >
+            {showPlanForm ? "Fechar" : "Editar"}
+          </AddButton>
+        }
       />
 
-      <section className="stats-grid">
-        <StatCard
-          label="Destino"
-          value={plan.city}
-          helper={plan.country || "Espanha"}
+      <SummaryStrip
+        items={[
+          { label: "Data", value: formatMonthYear(plan.targetDate) },
+          { label: "Meta", value: formatBRL(plan.goalBRL) },
+          { label: "Etapas", value: `${summary.done}/${summary.total}` },
+        ]}
+      />
+
+      {showPlanForm && (
+        <PlanForm
+          plan={plan}
+          setPlan={setPlan}
+          onDone={() => setShowPlanForm(false)}
         />
+      )}
 
-        <StatCard
-          label="Data-alvo"
-          value={formatMonthYear(plan.targetDate)}
-          helper="Previsão da mudança"
-        />
+      <div className="toolbar-row">
+        <SectionTitle eyebrow="Checklist" title="Etapas" />
 
-        <StatCard
-          label="Etapas"
-          value={`${Math.round(summary.progress)}%`}
-          helper={`${summary.done} de ${summary.total} concluídas`}
-        />
-      </section>
+        <AddButton
+          active={showStepForm}
+          onClick={() => setShowStepForm((current) => !current)}
+        >
+          {showStepForm ? "Fechar" : "Adicionar"}
+        </AddButton>
+      </div>
 
-      <section className="content-grid">
-        <Card>
-          <span className="section-eyebrow">Metas</span>
-
-          <div className="record-list">
-            <div className="record-row">
-              <span>Meta em reais</span>
-              <strong>{formatBRL(plan.goalBRL)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Meta em euros</span>
-              <strong>{formatEUR(plan.goalEUR)}</strong>
-            </div>
-
-            <div className="record-row">
-              <span>Cotação base</span>
-              <strong>{formatBRLWithCents(plan.euroRate)}</strong>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <span className="section-eyebrow">Observação</span>
-          <p className="muted">{plan.note || "Nenhuma observação cadastrada."}</p>
-        </Card>
-      </section>
+      {showStepForm && (
+        <StepForm onSave={addStep} onDone={() => setShowStepForm(false)} />
+      )}
 
       <Card>
-        <span className="section-eyebrow">Progresso das etapas</span>
-        <div style={{ marginTop: 14 }}>
-          <ProgressBar value={summary.progress} />
-        </div>
-      </Card>
-
-      <PlanForm plan={plan} setPlan={setPlan} />
-
-      <StepForm onSave={addStep} />
-
-      <Card>
-        <div className="card-title-row">
-          <div>
-            <span className="section-eyebrow">Etapas principais</span>
-            <h3>Checklist do plano</h3>
-          </div>
-
-          <Plane size={22} />
-        </div>
-
         {(plan.steps || []).length > 0 ? (
           <div className="record-list">
             {(plan.steps || []).map((step) => (
@@ -2264,7 +1956,6 @@ function PlanoPage({ plan, setPlan }) {
                   className={step.done ? "check-button checked" : "check-button"}
                   type="button"
                   onClick={() => toggleStep(step)}
-                  aria-label="Marcar etapa"
                 >
                   <CheckCircle2 size={19} />
                 </button>
@@ -2276,14 +1967,13 @@ function PlanoPage({ plan, setPlan }) {
 
                 <div className="document-actions">
                   <strong className={step.done ? "success" : "warning"}>
-                    {step.done ? "Concluído" : "Pendente"}
+                    {step.done ? "OK" : "Pendente"}
                   </strong>
 
                   <button
                     className="icon-button"
                     type="button"
                     onClick={() => deleteStep(step)}
-                    aria-label="Excluir"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -2292,9 +1982,7 @@ function PlanoPage({ plan, setPlan }) {
             ))}
           </div>
         ) : (
-          <p className="muted">
-            Nenhuma etapa cadastrada ainda. Adicione os próximos passos do plano.
-          </p>
+          <p className="muted">Nenhuma etapa cadastrada.</p>
         )}
       </Card>
     </>
