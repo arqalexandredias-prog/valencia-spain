@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Calculator,
   CheckCircle2,
-  Euro,
   FileText,
   Home,
   Landmark,
   Pencil,
   Plane,
   Plus,
-  Save,
   Trash2,
   Wallet,
   X,
@@ -235,6 +233,62 @@ function saveToStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function formatNumberInput(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("pt-BR").format(Number(digits));
+}
+
+function formatRateInput(value) {
+  let cleaned = String(value || "")
+    .replace(/[^\d,.]/g, "")
+    .replace(/\./g, ",");
+
+  const parts = cleaned.split(",");
+  const integer = formatNumberInput(parts[0]);
+
+  if (parts.length === 1) {
+    return integer;
+  }
+
+  const decimal = parts.slice(1).join("").replace(/\D/g, "").slice(0, 4);
+
+  return `${integer || "0"},${decimal}`;
+}
+
+function formatInputValue(name, value) {
+  const numberFields = [
+    "amount",
+    "amountBRL",
+    "amountEUR",
+    "goalBRL",
+    "goalEUR",
+  ];
+
+  const rateFields = ["rate", "euroRate"];
+
+  if (numberFields.includes(name)) {
+    return formatNumberInput(value);
+  }
+
+  if (rateFields.includes(name)) {
+    return formatRateInput(value);
+  }
+
+  return value;
+}
+
+function handleFormChange(event, setForm) {
+  const { name, value, type, checked } = event.target;
+
+  setForm((current) => ({
+    ...current,
+    [name]: type === "checkbox" ? checked : formatInputValue(name, value),
+  }));
+}
+
 function parseMoney(value) {
   if (typeof value === "number") return value;
 
@@ -251,9 +305,11 @@ function parseMoney(value) {
     normalized = normalized.replace(/\./g, "").replace(",", ".");
   } else if (hasDot) {
     const parts = normalized.split(".");
+    const looksLikeThousands =
+      parts.length > 1 && parts.slice(1).every((part) => part.length === 3);
 
-    if (parts.length === 2 && parts[1].length === 3 && parts[0].length > 1) {
-      normalized = normalized.replace(".", "");
+    if (looksLikeThousands) {
+      normalized = parts.join("");
     }
   }
 
@@ -262,6 +318,20 @@ function parseMoney(value) {
   if (!Number.isFinite(parsed) || Number.isNaN(parsed)) return 0;
 
   return parsed;
+}
+
+function getMonthsUntil(date) {
+  if (!date) return 1;
+
+  const today = new Date();
+  const target = new Date(`${date}T12:00:00`);
+
+  if (Number.isNaN(target.getTime())) return 1;
+
+  const diff = target.getTime() - today.getTime();
+  const days = diff / (1000 * 60 * 60 * 24);
+
+  return Math.max(1, Math.ceil(days / 30.44));
 }
 
 function formatBRL(value) {
@@ -497,11 +567,16 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
         ? (totalSaved / Number(plan.goalBRL || 0)) * 100
         : 0;
 
+    const monthsLeft = getMonthsUntil(plan.targetDate);
+    const monthlyNeed = missing / monthsLeft;
+
     return {
       savedBRL,
       totalSaved,
       missing,
       progress,
+      monthsLeft,
+      monthlyNeed,
       docsSummary,
       costsSummary,
       ...euroSummary,
@@ -510,21 +585,24 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
 
   return (
     <>
-      <PageHeader eyebrow="Plano Espanha" title="Quanto falta para ir embora?" />
+      <PageHeader eyebrow="Plano Espanha" title="Meta Espanha" />
 
       <Card className="hero-card clean-hero-card">
         <div className="hero-grid">
           <div>
-            <span className="section-eyebrow">Meta principal</span>
+            <span className="section-eyebrow">Progresso</span>
             <h2>{Math.round(summary.progress)}%</h2>
             <p>
-              <strong>{formatBRL(summary.totalSaved)}</strong> preparados
+              <strong>{formatBRL(summary.totalSaved)}</strong> guardados
             </p>
           </div>
 
           <div className="hero-missing">
             <span>Falta</span>
             <strong>{formatBRL(summary.missing)}</strong>
+            <small>
+              {formatBRL(summary.monthlyNeed)}/mês · {summary.monthsLeft} meses
+            </small>
           </div>
         </div>
 
@@ -533,9 +611,9 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
 
       <section className="compact-metrics">
         <MetricCard
-          label="Guardado"
+          label="Reserva"
           value={formatBRL(summary.savedBRL)}
-          helper="Reserva"
+          helper="em reais"
         />
 
         <MetricCard
@@ -547,13 +625,13 @@ function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
         <MetricCard
           label="Docs"
           value={`${summary.docsSummary.done}/${summary.docsSummary.total}`}
-          helper={`${Math.round(summary.docsSummary.progress)}%`}
+          helper={`${Math.round(summary.docsSummary.progress)}% concluído`}
         />
 
         <MetricCard
           label="Custos"
           value={formatBRL(summary.costsSummary.total)}
-          helper="Estimativa"
+          helper="estimado"
         />
       </section>
     </>
@@ -564,7 +642,7 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
   const [form, setForm] = useState({
     title: editingItem?.title || "",
     place: editingItem?.place || "",
-    amount: editingItem?.amount ? String(editingItem.amount) : "",
+    amount: editingItem?.amount ? formatNumberInput(editingItem.amount) : "",
     date: editingItem?.date || new Date().toISOString().slice(0, 10),
     note: editingItem?.note || "",
   });
@@ -573,19 +651,14 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
     setForm({
       title: editingItem?.title || "",
       place: editingItem?.place || "",
-      amount: editingItem?.amount ? String(editingItem.amount) : "",
+      amount: editingItem?.amount ? formatNumberInput(editingItem.amount) : "",
       date: editingItem?.date || new Date().toISOString().slice(0, 10),
       note: editingItem?.note || "",
     });
   }, [editingItem]);
 
   function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {
@@ -648,8 +721,8 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
           <input
             name="amount"
             value={form.amount}
-            inputMode="decimal"
-            placeholder="13000"
+            inputMode="numeric"
+            placeholder="15.000"
             onChange={handleChange}
           />
         </label>
@@ -807,11 +880,15 @@ function ReservaPage({ savings, setSavings, plan }) {
 function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
   const [form, setForm] = useState({
     account: editingItem?.account || "",
-    amountEUR: editingItem?.amountEUR ? String(editingItem.amountEUR) : "",
+    amountEUR: editingItem?.amountEUR
+      ? formatNumberInput(editingItem.amountEUR)
+      : "",
     rate: editingItem?.rate
       ? String(editingItem.rate).replace(".", ",")
       : String(euroRate).replace(".", ","),
-    amountBRL: editingItem?.amountBRL ? String(editingItem.amountBRL) : "",
+    amountBRL: editingItem?.amountBRL
+      ? formatNumberInput(editingItem.amountBRL)
+      : "",
     date: editingItem?.date || new Date().toISOString().slice(0, 10),
     note: editingItem?.note || "",
   });
@@ -832,23 +909,22 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
   useEffect(() => {
     setForm({
       account: editingItem?.account || "",
-      amountEUR: editingItem?.amountEUR ? String(editingItem.amountEUR) : "",
+      amountEUR: editingItem?.amountEUR
+        ? formatNumberInput(editingItem.amountEUR)
+        : "",
       rate: editingItem?.rate
         ? String(editingItem.rate).replace(".", ",")
         : String(euroRate).replace(".", ","),
-      amountBRL: editingItem?.amountBRL ? String(editingItem.amountBRL) : "",
+      amountBRL: editingItem?.amountBRL
+        ? formatNumberInput(editingItem.amountBRL)
+        : "",
       date: editingItem?.date || new Date().toISOString().slice(0, 10),
       note: editingItem?.note || "",
     });
   }, [editingItem, euroRate]);
 
   function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {
@@ -906,8 +982,8 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
           <input
             name="amountEUR"
             value={form.amountEUR}
-            inputMode="decimal"
-            placeholder="100"
+            inputMode="numeric"
+            placeholder="1.000"
             onChange={handleChange}
           />
         </label>
@@ -928,7 +1004,7 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
           <input
             name="amountBRL"
             value={form.amountBRL}
-            inputMode="decimal"
+            inputMode="numeric"
             placeholder="Opcional"
             onChange={handleChange}
           />
@@ -1131,12 +1207,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
   }, [editingItem]);
 
   function handleChange(event) {
-    const { name, value, type, checked } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {
@@ -1295,7 +1366,9 @@ function DocumentosPage({ documents, setDocuments }) {
   function toggleDone(item) {
     setDocuments((current) =>
       current.map((document) =>
-        document.id === item.id ? { ...document, done: !document.done } : document
+        document.id === item.id
+          ? { ...document, done: !document.done }
+          : document
       )
     );
   }
@@ -1401,7 +1474,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
   const [form, setForm] = useState({
     title: editingItem?.title || "",
     category: editingItem?.category || "",
-    amount: editingItem?.amount ? String(editingItem.amount) : "",
+    amount: editingItem?.amount ? formatNumberInput(editingItem.amount) : "",
     priority: editingItem?.priority || "Média",
     paid: editingItem?.paid || false,
     note: editingItem?.note || "",
@@ -1411,7 +1484,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
     setForm({
       title: editingItem?.title || "",
       category: editingItem?.category || "",
-      amount: editingItem?.amount ? String(editingItem.amount) : "",
+      amount: editingItem?.amount ? formatNumberInput(editingItem.amount) : "",
       priority: editingItem?.priority || "Média",
       paid: editingItem?.paid || false,
       note: editingItem?.note || "",
@@ -1419,12 +1492,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
   }, [editingItem]);
 
   function handleChange(event) {
-    const { name, value, type, checked } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {
@@ -1489,8 +1557,8 @@ function CostForm({ onSave, editingItem, onCancel }) {
           <input
             name="amount"
             value={form.amount}
-            inputMode="decimal"
-            placeholder="8000"
+            inputMode="numeric"
+            placeholder="8.000"
             onChange={handleChange}
           />
         </label>
@@ -1694,8 +1762,8 @@ function PlanForm({ plan, setPlan, onDone }) {
     city: plan.city || "",
     country: plan.country || "Espanha",
     targetDate: plan.targetDate || "",
-    goalBRL: String(plan.goalBRL || ""),
-    goalEUR: String(plan.goalEUR || ""),
+    goalBRL: plan.goalBRL ? formatNumberInput(plan.goalBRL) : "",
+    goalEUR: plan.goalEUR ? formatNumberInput(plan.goalEUR) : "",
     euroRate: String(plan.euroRate || "").replace(".", ","),
     note: plan.note || "",
   });
@@ -1705,20 +1773,15 @@ function PlanForm({ plan, setPlan, onDone }) {
       city: plan.city || "",
       country: plan.country || "Espanha",
       targetDate: plan.targetDate || "",
-      goalBRL: String(plan.goalBRL || ""),
-      goalEUR: String(plan.goalEUR || ""),
+      goalBRL: plan.goalBRL ? formatNumberInput(plan.goalBRL) : "",
+      goalEUR: plan.goalEUR ? formatNumberInput(plan.goalEUR) : "",
       euroRate: String(plan.euroRate || "").replace(".", ","),
       note: plan.note || "",
     });
   }, [plan]);
 
   function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {
@@ -1776,7 +1839,8 @@ function PlanForm({ plan, setPlan, onDone }) {
           <input
             name="goalBRL"
             value={form.goalBRL}
-            inputMode="decimal"
+            inputMode="numeric"
+            placeholder="60.000"
             onChange={handleChange}
           />
         </label>
@@ -1786,7 +1850,8 @@ function PlanForm({ plan, setPlan, onDone }) {
           <input
             name="goalEUR"
             value={form.goalEUR}
-            inputMode="decimal"
+            inputMode="numeric"
+            placeholder="7.000"
             onChange={handleChange}
           />
         </label>
@@ -1797,6 +1862,7 @@ function PlanForm({ plan, setPlan, onDone }) {
             name="euroRate"
             value={form.euroRate}
             inputMode="decimal"
+            placeholder="5,90"
             onChange={handleChange}
           />
         </label>
@@ -1825,12 +1891,7 @@ function StepForm({ onSave, onDone }) {
   const [form, setForm] = useState({ title: "", note: "" });
 
   function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    handleFormChange(event, setForm);
   }
 
   function handleSubmit(event) {

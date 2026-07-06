@@ -221,6 +221,13 @@ a {
   letter-spacing: -0.06em;
 }
 
+.hero-missing small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .progress-track {
   width: 100%;
   height: 9px;
@@ -660,10 +667,10 @@ a {
   }
 
   .page-header h1 {
+    max-width: 100%;
     font-size: clamp(1.42rem, 6.5vw, 1.85rem);
     line-height: 0.94;
     letter-spacing: -0.07em;
-    max-width: 78%;
   }
 
   .clean-page-header .button {
@@ -698,6 +705,7 @@ a {
   }
 
   .hero-card p {
+    margin-top: 2px;
     font-size: 0.72rem;
     line-height: 1.25;
   }
@@ -715,6 +723,10 @@ a {
   .hero-missing strong {
     font-size: clamp(1.32rem, 6.6vw, 1.72rem);
     line-height: 0.95;
+  }
+
+  .hero-missing small {
+    font-size: 0.64rem;
   }
 
   .progress-track {
