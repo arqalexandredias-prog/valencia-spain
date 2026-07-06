@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Calculator,
   CheckCircle2,
   Euro,
   FileText,
@@ -18,6 +19,7 @@ const STORAGE_KEYS = {
   euroPurchases: "valencia_spain_euro_purchases_v1",
   documents: "valencia_spain_documents_v1",
   plan: "valencia_spain_plan_v1",
+  costs: "valencia_spain_costs_v1",
 };
 
 const defaultPlan = {
@@ -127,11 +129,69 @@ const defaultDocuments = [
   },
 ];
 
+const defaultCosts = [
+  {
+    id: 1,
+    title: "Passagens",
+    category: "Viagem",
+    amount: 8000,
+    priority: "Alta",
+    paid: false,
+    note: "Estimativa para duas pessoas.",
+  },
+  {
+    id: 2,
+    title: "Aluguel inicial",
+    category: "Moradia",
+    amount: 7000,
+    priority: "Alta",
+    paid: false,
+    note: "Primeiro aluguel ou entrada inicial.",
+  },
+  {
+    id: 3,
+    title: "Caução / depósito",
+    category: "Moradia",
+    amount: 14000,
+    priority: "Alta",
+    paid: false,
+    note: "Possível caução de 1 a 2 meses.",
+  },
+  {
+    id: 4,
+    title: "Alimentação inicial",
+    category: "Custo de vida",
+    amount: 5000,
+    priority: "Média",
+    paid: false,
+    note: "Primeiros meses de adaptação.",
+  },
+  {
+    id: 5,
+    title: "Documentos",
+    category: "Documentação",
+    amount: 4000,
+    priority: "Alta",
+    paid: false,
+    note: "Certidões, apostilamento, traduções e taxas.",
+  },
+  {
+    id: 6,
+    title: "Reserva de emergência",
+    category: "Segurança",
+    amount: 22000,
+    priority: "Alta",
+    paid: false,
+    note: "Valor para chegar com mais tranquilidade.",
+  },
+];
+
 const navItems = [
   { id: "inicio", label: "Início", icon: Home },
   { id: "reserva", label: "Reserva", icon: Wallet },
   { id: "euros", label: "Euros", icon: Landmark },
   { id: "documentos", label: "Docs", icon: FileText },
+  { id: "custos", label: "Custos", icon: Calculator },
   { id: "plano", label: "Plano", icon: Plane },
 ];
 
@@ -295,6 +355,29 @@ function getStepsSummary(steps = []) {
   };
 }
 
+function getCostsSummary(costs = []) {
+  const total = costs.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const paid = costs
+    .filter((item) => item.paid)
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const pending = Math.max(total - paid, 0);
+
+  const paidItems = costs.filter((item) => item.paid).length;
+  const totalItems = costs.length;
+  const progress = totalItems > 0 ? (paidItems / totalItems) * 100 : 0;
+
+  return {
+    total,
+    paid,
+    pending,
+    totalItems,
+    paidItems,
+    progress,
+  };
+}
+
 function AppShell({ activePage, setActivePage, children }) {
   return (
     <div className="app-shell">
@@ -370,12 +453,13 @@ function ProgressBar({ value }) {
   );
 }
 
-function Dashboard({ savings, euroPurchases, documents, plan }) {
+function Dashboard({ savings, euroPurchases, documents, plan, costs }) {
   const summary = useMemo(() => {
     const savedBRL = getSavingsTotal(savings);
     const euroSummary = getEuroSummary(euroPurchases, plan.euroRate);
     const docsSummary = getDocumentsSummary(documents);
     const stepsSummary = getStepsSummary(plan.steps);
+    const costsSummary = getCostsSummary(costs);
 
     const totalSaved = savedBRL + euroSummary.currentValueBRL;
     const missing = Math.max(Number(plan.goalBRL || 0) - totalSaved, 0);
@@ -391,9 +475,10 @@ function Dashboard({ savings, euroPurchases, documents, plan }) {
       progress,
       docsSummary,
       stepsSummary,
+      costsSummary,
       ...euroSummary,
     };
-  }, [savings, euroPurchases, documents, plan]);
+  }, [savings, euroPurchases, documents, plan, costs]);
 
   return (
     <>
@@ -492,6 +577,11 @@ function Dashboard({ savings, euroPurchases, documents, plan }) {
             <div className="record-row">
               <span>Euros convertidos</span>
               <strong>{formatBRL(summary.currentValueBRL)}</strong>
+            </div>
+
+            <div className="record-row">
+              <span>Custo estimado</span>
+              <strong>{formatBRL(summary.costsSummary.total)}</strong>
             </div>
 
             <div className="record-row">
@@ -1446,6 +1536,371 @@ function DocumentosPage({ documents, setDocuments }) {
   );
 }
 
+function CostForm({ onSave, editingItem, onCancel }) {
+  const [form, setForm] = useState({
+    title: editingItem?.title || "",
+    category: editingItem?.category || "",
+    amount: editingItem?.amount ? String(editingItem.amount) : "",
+    priority: editingItem?.priority || "Média",
+    paid: editingItem?.paid || false,
+    note: editingItem?.note || "",
+  });
+
+  useEffect(() => {
+    setForm({
+      title: editingItem?.title || "",
+      category: editingItem?.category || "",
+      amount: editingItem?.amount ? String(editingItem.amount) : "",
+      priority: editingItem?.priority || "Média",
+      paid: editingItem?.paid || false,
+      note: editingItem?.note || "",
+    });
+  }, [editingItem]);
+
+  function handleChange(event) {
+    const { name, value, type, checked } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const amount = parseMoney(form.amount);
+
+    if (!form.title.trim()) {
+      alert("Informe o nome do custo.");
+      return;
+    }
+
+    if (amount <= 0) {
+      alert("Informe um valor maior que zero.");
+      return;
+    }
+
+    onSave({
+      ...editingItem,
+      id: editingItem?.id || Date.now(),
+      title: form.title.trim(),
+      category: form.category.trim() || "Geral",
+      amount,
+      priority: form.priority,
+      paid: form.paid,
+      note: form.note.trim(),
+    });
+
+    setForm({
+      title: "",
+      category: "",
+      amount: "",
+      priority: "Média",
+      paid: false,
+      note: "",
+    });
+  }
+
+  return (
+    <Card>
+      <div className="card-title-row">
+        <div>
+          <span className="section-eyebrow">
+            {editingItem ? "Editar custo" : "Novo custo"}
+          </span>
+          <h3>
+            {editingItem ? "Atualizar custo da mudança" : "Adicionar custo"}
+          </h3>
+        </div>
+
+        <Calculator size={22} />
+      </div>
+
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Custo</span>
+          <input
+            name="title"
+            value={form.title}
+            placeholder="Ex: passagem, caução, seguro..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Categoria</span>
+          <input
+            name="category"
+            value={form.category}
+            placeholder="Ex: Moradia, viagem, documentos..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Valor estimado</span>
+          <input
+            name="amount"
+            value={form.amount}
+            inputMode="decimal"
+            placeholder="Ex: 8000"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Prioridade</span>
+          <select
+            name="priority"
+            value={form.priority}
+            onChange={handleChange}
+          >
+            <option value="Alta">Alta</option>
+            <option value="Média">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+        </label>
+
+        <label className="field field-full checkbox-field">
+          <input
+            name="paid"
+            checked={form.paid}
+            type="checkbox"
+            onChange={handleChange}
+          />
+          <span>Marcar como resolvido / já separado</span>
+        </label>
+
+        <label className="field field-full">
+          <span>Observação</span>
+          <textarea
+            name="note"
+            value={form.note}
+            rows={3}
+            placeholder="Ex: estimativa para duas pessoas, valor aproximado..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <div className="form-actions field-full">
+          {editingItem && (
+            <button className="button ghost" type="button" onClick={onCancel}>
+              Cancelar
+            </button>
+          )}
+
+          <button className="button primary" type="submit">
+            {editingItem ? "Salvar alteração" : "Adicionar custo"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function CustosPage({ costs, setCosts, plan }) {
+  const [editingItem, setEditingItem] = useState(null);
+
+  const summary = useMemo(() => {
+    return getCostsSummary(costs);
+  }, [costs]);
+
+  const sortedCosts = useMemo(() => {
+    const priorityOrder = {
+      Alta: 1,
+      Média: 2,
+      Baixa: 3,
+    };
+
+    return [...costs].sort((a, b) => {
+      if (a.paid !== b.paid) {
+        return a.paid ? 1 : -1;
+      }
+
+      return (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9);
+    });
+  }, [costs]);
+
+  function handleSave(item) {
+    setCosts((current) => {
+      const exists = current.some((cost) => cost.id === item.id);
+
+      if (exists) {
+        return current.map((cost) => (cost.id === item.id ? item : cost));
+      }
+
+      return [item, ...current];
+    });
+
+    setEditingItem(null);
+  }
+
+  function handleDelete(item) {
+    const confirmDelete = window.confirm(`Excluir "${item.title}"?`);
+
+    if (!confirmDelete) return;
+
+    setCosts((current) => current.filter((cost) => cost.id !== item.id));
+  }
+
+  function togglePaid(item) {
+    setCosts((current) =>
+      current.map((cost) =>
+        cost.id === item.id
+          ? {
+              ...cost,
+              paid: !cost.paid,
+            }
+          : cost
+      )
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Custos da mudança"
+        title="Quanto custa ir para a Espanha?"
+        description="Estime os custos principais da imigração: viagem, moradia inicial, documentos, alimentação e reserva de segurança."
+      />
+
+      <section className="stats-grid">
+        <StatCard
+          label="Custo estimado"
+          value={formatBRL(summary.total)}
+          helper="Soma dos custos cadastrados"
+        />
+
+        <StatCard
+          label="Já separado"
+          value={formatBRL(summary.paid)}
+          helper={`${summary.paidItems} de ${summary.totalItems} itens resolvidos`}
+        />
+
+        <StatCard
+          label="Ainda falta"
+          value={formatBRL(summary.pending)}
+          helper={`Meta atual do plano: ${formatBRL(plan.goalBRL)}`}
+        />
+      </section>
+
+      <Card>
+        <span className="section-eyebrow">Progresso dos custos</span>
+        <div style={{ marginTop: 14 }}>
+          <ProgressBar value={summary.progress} />
+        </div>
+      </Card>
+
+      <section className="content-grid">
+        <Card>
+          <span className="section-eyebrow">Comparativo</span>
+
+          <div className="record-list">
+            <div className="record-row">
+              <span>Meta atual do plano</span>
+              <strong>{formatBRL(plan.goalBRL)}</strong>
+            </div>
+
+            <div className="record-row">
+              <span>Custo estimado</span>
+              <strong>{formatBRL(summary.total)}</strong>
+            </div>
+
+            <div className="record-row">
+              <span>Diferença</span>
+              <strong>
+                {formatBRL(Number(plan.goalBRL || 0) - summary.total)}
+              </strong>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <span className="section-eyebrow">Leitura rápida</span>
+          <p className="muted">
+            Esta tela ajuda a transformar a meta da Espanha em uma estimativa
+            real. Se os custos ficarem maiores que a meta, você já sabe que
+            precisa ajustar o plano antes de viajar.
+          </p>
+        </Card>
+      </section>
+
+      <CostForm
+        editingItem={editingItem}
+        onSave={handleSave}
+        onCancel={() => setEditingItem(null)}
+      />
+
+      <Card>
+        <div className="card-title-row">
+          <div>
+            <span className="section-eyebrow">Lista de custos</span>
+            <h3>Estimativa da mudança</h3>
+          </div>
+
+          <Calculator size={22} />
+        </div>
+
+        {sortedCosts.length > 0 ? (
+          <div className="record-list">
+            {sortedCosts.map((item) => (
+              <div
+                className={item.paid ? "document-row done" : "document-row"}
+                key={item.id}
+              >
+                <button
+                  className={item.paid ? "check-button checked" : "check-button"}
+                  type="button"
+                  onClick={() => togglePaid(item)}
+                  aria-label="Marcar custo"
+                >
+                  <CheckCircle2 size={19} />
+                </button>
+
+                <div className="saving-info">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.category || "Geral"} • Prioridade {item.priority}
+                  </span>
+                  {item.note && <small>{item.note}</small>}
+                </div>
+
+                <div className="document-actions">
+                  <strong>{formatBRL(item.amount)}</strong>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => setEditingItem(item)}
+                    aria-label="Editar"
+                  >
+                    <Pencil size={17} />
+                  </button>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => handleDelete(item)}
+                    aria-label="Excluir"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            Nenhum custo cadastrado ainda. Adicione a primeira estimativa da
+            mudança.
+          </p>
+        )}
+      </Card>
+    </>
+  );
+}
+
 function PlanForm({ plan, setPlan }) {
   const [form, setForm] = useState({
     city: plan.city || "",
@@ -1861,6 +2316,10 @@ export default function App() {
     loadFromStorage(STORAGE_KEYS.documents, defaultDocuments)
   );
 
+  const [costs, setCosts] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.costs, defaultCosts)
+  );
+
   const [plan, setPlan] = useState(() =>
     loadFromStorage(STORAGE_KEYS.plan, defaultPlan)
   );
@@ -1876,6 +2335,10 @@ export default function App() {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.documents, documents);
   }, [documents]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.costs, costs);
+  }, [costs]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.plan, plan);
@@ -1902,6 +2365,10 @@ export default function App() {
       );
     }
 
+    if (activePage === "custos") {
+      return <CustosPage costs={costs} setCosts={setCosts} plan={plan} />;
+    }
+
     if (activePage === "plano") {
       return <PlanoPage plan={plan} setPlan={setPlan} />;
     }
@@ -1912,6 +2379,7 @@ export default function App() {
         euroPurchases={euroPurchases}
         documents={documents}
         plan={plan}
+        costs={costs}
       />
     );
   }
