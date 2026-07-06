@@ -15,6 +15,7 @@ import {
 const STORAGE_KEYS = {
   savings: "valencia_spain_savings_v1",
   euroPurchases: "valencia_spain_euro_purchases_v1",
+  documents: "valencia_spain_documents_v1",
 };
 
 const initialData = {
@@ -22,14 +23,6 @@ const initialData = {
   euroRate: 5.9,
   targetDate: "Abril de 2027",
   city: "Valência",
-  documents: [
-    { id: 1, title: "Passaporte", done: false },
-    { id: 2, title: "Certidões", done: false },
-    { id: 3, title: "Apostilamento", done: false },
-    { id: 4, title: "Diploma / histórico", done: false },
-    { id: 5, title: "Currículo e portfólio", done: false },
-    { id: 6, title: "Comprovantes financeiros", done: false },
-  ],
 };
 
 const defaultSavings = [
@@ -44,6 +37,63 @@ const defaultSavings = [
 ];
 
 const defaultEuroPurchases = [];
+
+const defaultDocuments = [
+  {
+    id: 1,
+    title: "Passaporte",
+    category: "Identificação",
+    priority: "Alta",
+    deadline: "",
+    done: false,
+    note: "Ver validade e documentos necessários.",
+  },
+  {
+    id: 2,
+    title: "Certidões",
+    category: "Civil",
+    priority: "Alta",
+    deadline: "",
+    done: false,
+    note: "Organizar certidões atualizadas.",
+  },
+  {
+    id: 3,
+    title: "Apostilamento",
+    category: "Legalização",
+    priority: "Alta",
+    deadline: "",
+    done: false,
+    note: "Separar documentos que precisam de apostila.",
+  },
+  {
+    id: 4,
+    title: "Diploma / histórico",
+    category: "Profissional",
+    priority: "Média",
+    deadline: "",
+    done: false,
+    note: "Reunir diploma, histórico e comprovações.",
+  },
+  {
+    id: 5,
+    title: "Currículo e portfólio",
+    category: "Trabalho",
+    priority: "Média",
+    deadline: "",
+    done: false,
+    note: "Preparar versão voltada para Espanha.",
+  },
+  {
+    id: 6,
+    title: "Comprovantes financeiros",
+    category: "Financeiro",
+    priority: "Alta",
+    deadline: "",
+    done: false,
+    note: "Guardar extratos e comprovantes da reserva.",
+  },
+];
 
 const navItems = [
   { id: "inicio", label: "Início", icon: Home },
@@ -172,6 +222,20 @@ function getEuroSummary(euroPurchases) {
   };
 }
 
+function getDocumentsSummary(documents) {
+  const total = documents.length;
+  const done = documents.filter((item) => item.done).length;
+  const pending = Math.max(total - done, 0);
+  const progress = total > 0 ? (done / total) * 100 : 0;
+
+  return {
+    total,
+    done,
+    pending,
+    progress,
+  };
+}
+
 function AppShell({ activePage, setActivePage, children }) {
   return (
     <div className="app-shell">
@@ -247,31 +311,27 @@ function ProgressBar({ value }) {
   );
 }
 
-function Dashboard({ savings, euroPurchases }) {
+function Dashboard({ savings, euroPurchases, documents }) {
   const data = initialData;
 
   const summary = useMemo(() => {
     const savedBRL = getSavingsTotal(savings);
     const euroSummary = getEuroSummary(euroPurchases);
+    const docsSummary = getDocumentsSummary(documents);
 
     const totalSaved = savedBRL + euroSummary.currentValueBRL;
     const missing = Math.max(data.goalBRL - totalSaved, 0);
     const progress = data.goalBRL > 0 ? (totalSaved / data.goalBRL) * 100 : 0;
-
-    const doneDocs = data.documents.filter((doc) => doc.done).length;
-    const docsProgress =
-      data.documents.length > 0 ? (doneDocs / data.documents.length) * 100 : 0;
 
     return {
       savedBRL,
       totalSaved,
       missing,
       progress,
-      doneDocs,
-      docsProgress,
+      docsSummary,
       ...euroSummary,
     };
-  }, [data, savings, euroPurchases]);
+  }, [data, savings, euroPurchases, documents]);
 
   return (
     <>
@@ -322,8 +382,8 @@ function Dashboard({ savings, euroPurchases }) {
 
         <StatCard
           label="Documentos"
-          value={`${Math.round(summary.docsProgress)}%`}
-          helper={`${summary.doneDocs} de ${data.documents.length} concluídos`}
+          value={`${Math.round(summary.docsSummary.progress)}%`}
+          helper={`${summary.docsSummary.done} de ${summary.docsSummary.total} concluídos`}
         />
       </section>
 
@@ -332,16 +392,20 @@ function Dashboard({ savings, euroPurchases }) {
           <div className="card-title-row">
             <div>
               <span className="section-eyebrow">Próxima ação</span>
-              <h3>Organizar os documentos essenciais</h3>
+              <h3>
+                {summary.docsSummary.progress < 100
+                  ? "Avançar nos documentos essenciais"
+                  : "Revisar seu plano final"}
+              </h3>
             </div>
 
             <CheckCircle2 size={22} />
           </div>
 
           <p className="muted">
-            Antes de pensar em detalhes avançados, o primeiro bloco precisa ser:
-            passaporte, certidões, diploma, currículo, portfólio e comprovantes
-            financeiros.
+            {summary.docsSummary.progress < 100
+              ? "A parte financeira está andando, mas os documentos precisam caminhar junto. Priorize passaporte, certidões, diploma, currículo, portfólio e comprovantes financeiros."
+              : "Seus documentos principais estão marcados como concluídos. Agora vale revisar cidade, prazo, reserva e próximos passos."}
           </p>
         </Card>
 
@@ -983,28 +1047,333 @@ function EurosPage({ euroPurchases, setEuroPurchases }) {
   );
 }
 
-function DocumentosPage() {
-  const docs = initialData.documents;
+function DocumentForm({ onSave, editingItem, onCancel }) {
+  const [form, setForm] = useState({
+    title: editingItem?.title || "",
+    category: editingItem?.category || "",
+    priority: editingItem?.priority || "Média",
+    deadline: editingItem?.deadline || "",
+    done: editingItem?.done || false,
+    note: editingItem?.note || "",
+  });
+
+  useEffect(() => {
+    setForm({
+      title: editingItem?.title || "",
+      category: editingItem?.category || "",
+      priority: editingItem?.priority || "Média",
+      deadline: editingItem?.deadline || "",
+      done: editingItem?.done || false,
+      note: editingItem?.note || "",
+    });
+  }, [editingItem]);
+
+  function handleChange(event) {
+    const { name, value, type, checked } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.title.trim()) {
+      alert("Informe o nome do documento.");
+      return;
+    }
+
+    onSave({
+      ...editingItem,
+      id: editingItem?.id || Date.now(),
+      title: form.title.trim(),
+      category: form.category.trim() || "Geral",
+      priority: form.priority,
+      deadline: form.deadline,
+      done: form.done,
+      note: form.note.trim(),
+    });
+
+    setForm({
+      title: "",
+      category: "",
+      priority: "Média",
+      deadline: "",
+      done: false,
+      note: "",
+    });
+  }
+
+  return (
+    <Card>
+      <div className="card-title-row">
+        <div>
+          <span className="section-eyebrow">
+            {editingItem ? "Editar documento" : "Novo documento"}
+          </span>
+          <h3>
+            {editingItem
+              ? "Atualizar item do checklist"
+              : "Adicionar documento"}
+          </h3>
+        </div>
+
+        <FileText size={22} />
+      </div>
+
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Documento</span>
+          <input
+            name="title"
+            value={form.title}
+            placeholder="Ex: Passaporte, certidão, diploma..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Categoria</span>
+          <input
+            name="category"
+            value={form.category}
+            placeholder="Ex: Identificação, civil, trabalho..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Prioridade</span>
+          <select
+            name="priority"
+            value={form.priority}
+            onChange={handleChange}
+          >
+            <option value="Alta">Alta</option>
+            <option value="Média">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+        </label>
+
+        <label className="field">
+          <span>Prazo</span>
+          <input
+            name="deadline"
+            value={form.deadline}
+            type="date"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field field-full checkbox-field">
+          <input
+            name="done"
+            checked={form.done}
+            type="checkbox"
+            onChange={handleChange}
+          />
+          <span>Marcar como concluído</span>
+        </label>
+
+        <label className="field field-full">
+          <span>Observação</span>
+          <textarea
+            name="note"
+            value={form.note}
+            rows={3}
+            placeholder="Ex: precisa atualizar, apostilar, traduzir ou separar cópia."
+            onChange={handleChange}
+          />
+        </label>
+
+        <div className="form-actions field-full">
+          {editingItem && (
+            <button className="button ghost" type="button" onClick={onCancel}>
+              Cancelar
+            </button>
+          )}
+
+          <button className="button primary" type="submit">
+            {editingItem ? "Salvar alteração" : "Adicionar documento"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function DocumentosPage({ documents, setDocuments }) {
+  const [editingItem, setEditingItem] = useState(null);
+
+  const summary = useMemo(() => {
+    return getDocumentsSummary(documents);
+  }, [documents]);
+
+  const sortedDocuments = useMemo(() => {
+    const priorityOrder = {
+      Alta: 1,
+      Média: 2,
+      Baixa: 3,
+    };
+
+    return [...documents].sort((a, b) => {
+      if (a.done !== b.done) {
+        return a.done ? 1 : -1;
+      }
+
+      return (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9);
+    });
+  }, [documents]);
+
+  function handleSave(item) {
+    setDocuments((current) => {
+      const exists = current.some((document) => document.id === item.id);
+
+      if (exists) {
+        return current.map((document) =>
+          document.id === item.id ? item : document
+        );
+      }
+
+      return [item, ...current];
+    });
+
+    setEditingItem(null);
+  }
+
+  function handleDelete(item) {
+    const confirmDelete = window.confirm(`Excluir "${item.title}"?`);
+
+    if (!confirmDelete) return;
+
+    setDocuments((current) =>
+      current.filter((document) => document.id !== item.id)
+    );
+  }
+
+  function toggleDone(item) {
+    setDocuments((current) =>
+      current.map((document) =>
+        document.id === item.id
+          ? {
+              ...document,
+              done: !document.done,
+            }
+          : document
+      )
+    );
+  }
 
   return (
     <>
       <PageHeader
         eyebrow="Documentos"
         title="Checklist da imigração"
-        description="Documentos, comprovantes e pendências importantes para a Espanha."
+        description="Organize documentos, comprovantes e pendências importantes para a Espanha."
+      />
+
+      <section className="stats-grid">
+        <StatCard
+          label="Progresso"
+          value={`${Math.round(summary.progress)}%`}
+          helper={`${summary.done} de ${summary.total} concluídos`}
+        />
+
+        <StatCard
+          label="Pendentes"
+          value={String(summary.pending)}
+          helper="Itens que ainda precisam andar"
+        />
+
+        <StatCard
+          label="Concluídos"
+          value={String(summary.done)}
+          helper="Documentos já resolvidos"
+        />
+      </section>
+
+      <Card>
+        <span className="section-eyebrow">Progresso documental</span>
+        <div style={{ marginTop: 14 }}>
+          <ProgressBar value={summary.progress} />
+        </div>
+      </Card>
+
+      <DocumentForm
+        editingItem={editingItem}
+        onSave={handleSave}
+        onCancel={() => setEditingItem(null)}
       />
 
       <Card>
-        <div className="record-list">
-          {docs.map((doc) => (
-            <div className="record-row" key={doc.id}>
-              <span>{doc.title}</span>
-              <strong className={doc.done ? "success" : "warning"}>
-                {doc.done ? "Concluído" : "Pendente"}
-              </strong>
-            </div>
-          ))}
+        <div className="card-title-row">
+          <div>
+            <span className="section-eyebrow">Checklist</span>
+            <h3>Documentos cadastrados</h3>
+          </div>
+
+          <FileText size={22} />
         </div>
+
+        {sortedDocuments.length > 0 ? (
+          <div className="record-list">
+            {sortedDocuments.map((item) => (
+              <div
+                className={item.done ? "document-row done" : "document-row"}
+                key={item.id}
+              >
+                <button
+                  className={item.done ? "check-button checked" : "check-button"}
+                  type="button"
+                  onClick={() => toggleDone(item)}
+                  aria-label="Marcar documento"
+                >
+                  <CheckCircle2 size={19} />
+                </button>
+
+                <div className="saving-info">
+                  <strong>{item.title}</strong>
+                  <span>
+                    {item.category || "Geral"} • Prioridade {item.priority}
+                    {item.deadline ? ` • Prazo ${formatDate(item.deadline)}` : ""}
+                  </span>
+                  {item.note && <small>{item.note}</small>}
+                </div>
+
+                <div className="document-actions">
+                  <strong className={item.done ? "success" : "warning"}>
+                    {item.done ? "Concluído" : "Pendente"}
+                  </strong>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => setEditingItem(item)}
+                    aria-label="Editar"
+                  >
+                    <Pencil size={17} />
+                  </button>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => handleDelete(item)}
+                    aria-label="Excluir"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            Nenhum documento cadastrado ainda. Adicione o primeiro item do seu
+            checklist da Espanha.
+          </p>
+        )}
       </Card>
     </>
   );
@@ -1057,6 +1426,10 @@ export default function App() {
     loadFromStorage(STORAGE_KEYS.euroPurchases, defaultEuroPurchases)
   );
 
+  const [documents, setDocuments] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.documents, defaultDocuments)
+  );
+
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.savings, savings);
   }, [savings]);
@@ -1064,6 +1437,10 @@ export default function App() {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.euroPurchases, euroPurchases);
   }, [euroPurchases]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.documents, documents);
+  }, [documents]);
 
   function renderPage() {
     if (activePage === "reserva") {
@@ -1079,10 +1456,21 @@ export default function App() {
       );
     }
 
-    if (activePage === "documentos") return <DocumentosPage />;
+    if (activePage === "documentos") {
+      return (
+        <DocumentosPage documents={documents} setDocuments={setDocuments} />
+      );
+    }
+
     if (activePage === "plano") return <PlanoPage />;
 
-    return <Dashboard savings={savings} euroPurchases={euroPurchases} />;
+    return (
+      <Dashboard
+        savings={savings}
+        euroPurchases={euroPurchases}
+        documents={documents}
+      />
+    );
   }
 
   return (
