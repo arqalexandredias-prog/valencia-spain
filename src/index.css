@@ -1395,4 +1395,538 @@ a {
     padding: 0 11px;
     font-size: 0.72rem;
   }
+}/* VALENCIA — mobile ultra compacto */
+@media (max-width: 780px) {
+  .app-shell {
+    padding: 8px 12px 118px;
+  }
+
+  .topbar {
+    min-height: 52px;
+    padding: 9px 11px;
+    border-radius: 20px;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+    border-radius: 14px;
+    font-size: 0.92rem;
+  }
+
+  .brand-name {
+    font-size: 0.96rem;
+    letter-spacing: 0.16em;
+  }
+
+  .main-content {
+    gap: 10px;
+    padding-top: 14px;
+  }
+
+  .page-header,
+  .clean-page-header {
+    gap: 8px;
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .page-header span,
+  .section-eyebrow,
+  .stat-label,
+  .summary-item span {
+    font-size: 0.52rem;
+    letter-spacing: 0.13em;
+  }
+
+  .page-header h1 {
+    font-size: clamp(1.42rem, 6.5vw, 1.85rem);
+    line-height: 0.94;
+    letter-spacing: -0.07em;
+    max-width: 78%;
+  }
+
+  .clean-page-header .button {
+    min-height: 34px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+  }
+
+  .card {
+    padding: 13px;
+    border-radius: 20px;
+  }
+
+  .hero-card,
+  .clean-hero-card {
+    padding: 13px;
+    gap: 11px;
+    border-radius: 22px;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .hero-card h2 {
+    font-size: clamp(2.25rem, 10vw, 2.85rem);
+    line-height: 0.82;
+    margin: 3px 0 5px;
+  }
+
+  .hero-card p {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .hero-missing {
+    min-width: 0;
+    padding: 10px 11px;
+    border-radius: 17px;
+  }
+
+  .hero-missing span {
+    font-size: 0.63rem;
+  }
+
+  .hero-missing strong {
+    font-size: clamp(1.32rem, 6.6vw, 1.72rem);
+    line-height: 0.95;
+  }
+
+  .progress-track {
+    height: 7px;
+  }
+
+  .compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric-card {
+    padding: 12px;
+    border-radius: 18px;
+    min-height: 92px;
+  }
+
+  .metric-card strong {
+    margin-top: 7px;
+    font-size: 1.08rem;
+    line-height: 0.95;
+  }
+
+  .metric-card small {
+    margin-top: 6px;
+    font-size: 0.66rem;
+    line-height: 1.25;
+  }
+
+  .summary-strip {
+    padding: 12px;
+    border-radius: 18px;
+    gap: 8px;
+  }
+
+  .summary-item strong {
+    font-size: 0.82rem;
+  }
+
+  .section-title h3 {
+    font-size: 0.98rem;
+  }
+
+  .toolbar-row {
+    gap: 10px;
+  }
+
+  .button {
+    min-height: 36px;
+    padding: 0 13px;
+    font-size: 0.72rem;
+  }
+
+  .form-grid {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .field {
+    gap: 6px;
+  }
+
+  .field span {
+    font-size: 0.58rem;
+    letter-spacing: 0.13em;
+  }
+
+  .field input,
+  .field textarea,
+  .field select {
+    min-height: 40px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 0.84rem;
+  }
+
+  .saving-row,
+  .document-row {
+    padding: 12px 0;
+    gap: 10px;
+  }
+
+  .saving-info {
+    gap: 3px;
+  }
+
+  .saving-info strong {
+    font-size: 0.88rem;
+    line-height: 1.22;
+  }
+
+  .saving-info span,
+  .saving-info small {
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  .saving-actions,
+  .document-actions {
+    gap: 7px;
+  }
+
+  .saving-actions strong,
+  .document-actions strong {
+    font-size: 0.82rem;
+    min-width: auto;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .check-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .bottom-nav {
+    bottom: 7px;
+    width: calc(100% - 20px);
+    padding: 5px;
+    gap: 2px;
+    border-radius: 22px;
+  }
+
+  .nav-item {
+    min-height: 48px;
+    border-radius: 15px;
+    font-size: 0.5rem;
+    gap: 3px;
+  }
+
+  .nav-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .nav-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .page-header h1 {
+    font-size: 1.34rem;
+  }
+
+  .hero-card h2 {
+    font-size: 2.12rem;
+  }
+
+  .hero-missing strong {
+    font-size: 1.25rem;
+  }
+
+  .metric-card strong {
+    font-size: 1rem;
+  }
+
+  .brand-name {
+    font-size: 0.9rem;
+  }
+}/* VALENCIA — mobile ultra compacto */
+@media (max-width: 780px) {
+  .app-shell {
+    padding: 8px 12px 118px;
+  }
+
+  .topbar {
+    min-height: 52px;
+    padding: 9px 11px;
+    border-radius: 20px;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+    border-radius: 14px;
+    font-size: 0.92rem;
+  }
+
+  .brand-name {
+    font-size: 0.96rem;
+    letter-spacing: 0.16em;
+  }
+
+  .main-content {
+    gap: 10px;
+    padding-top: 14px;
+  }
+
+  .page-header,
+  .clean-page-header {
+    gap: 8px;
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .page-header span,
+  .section-eyebrow,
+  .stat-label,
+  .summary-item span {
+    font-size: 0.52rem;
+    letter-spacing: 0.13em;
+  }
+
+  .page-header h1 {
+    font-size: clamp(1.42rem, 6.5vw, 1.85rem);
+    line-height: 0.94;
+    letter-spacing: -0.07em;
+    max-width: 78%;
+  }
+
+  .clean-page-header .button {
+    min-height: 34px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+  }
+
+  .card {
+    padding: 13px;
+    border-radius: 20px;
+  }
+
+  .hero-card,
+  .clean-hero-card {
+    padding: 13px;
+    gap: 11px;
+    border-radius: 22px;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .hero-card h2 {
+    font-size: clamp(2.25rem, 10vw, 2.85rem);
+    line-height: 0.82;
+    margin: 3px 0 5px;
+  }
+
+  .hero-card p {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .hero-missing {
+    min-width: 0;
+    padding: 10px 11px;
+    border-radius: 17px;
+  }
+
+  .hero-missing span {
+    font-size: 0.63rem;
+  }
+
+  .hero-missing strong {
+    font-size: clamp(1.32rem, 6.6vw, 1.72rem);
+    line-height: 0.95;
+  }
+
+  .progress-track {
+    height: 7px;
+  }
+
+  .compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric-card {
+    padding: 12px;
+    border-radius: 18px;
+    min-height: 92px;
+  }
+
+  .metric-card strong {
+    margin-top: 7px;
+    font-size: 1.08rem;
+    line-height: 0.95;
+  }
+
+  .metric-card small {
+    margin-top: 6px;
+    font-size: 0.66rem;
+    line-height: 1.25;
+  }
+
+  .summary-strip {
+    padding: 12px;
+    border-radius: 18px;
+    gap: 8px;
+  }
+
+  .summary-item strong {
+    font-size: 0.82rem;
+  }
+
+  .section-title h3 {
+    font-size: 0.98rem;
+  }
+
+  .toolbar-row {
+    gap: 10px;
+  }
+
+  .button {
+    min-height: 36px;
+    padding: 0 13px;
+    font-size: 0.72rem;
+  }
+
+  .form-grid {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .field {
+    gap: 6px;
+  }
+
+  .field span {
+    font-size: 0.58rem;
+    letter-spacing: 0.13em;
+  }
+
+  .field input,
+  .field textarea,
+  .field select {
+    min-height: 40px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 0.84rem;
+  }
+
+  .saving-row,
+  .document-row {
+    padding: 12px 0;
+    gap: 10px;
+  }
+
+  .saving-info {
+    gap: 3px;
+  }
+
+  .saving-info strong {
+    font-size: 0.88rem;
+    line-height: 1.22;
+  }
+
+  .saving-info span,
+  .saving-info small {
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+
+  .saving-actions,
+  .document-actions {
+    gap: 7px;
+  }
+
+  .saving-actions strong,
+  .document-actions strong {
+    font-size: 0.82rem;
+    min-width: auto;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .check-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .bottom-nav {
+    bottom: 7px;
+    width: calc(100% - 20px);
+    padding: 5px;
+    gap: 2px;
+    border-radius: 22px;
+  }
+
+  .nav-item {
+    min-height: 48px;
+    border-radius: 15px;
+    font-size: 0.5rem;
+    gap: 3px;
+  }
+
+  .nav-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .nav-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .page-header h1 {
+    font-size: 1.34rem;
+  }
+
+  .hero-card h2 {
+    font-size: 2.12rem;
+  }
+
+  .hero-missing strong {
+    font-size: 1.25rem;
+  }
+
+  .metric-card strong {
+    font-size: 1rem;
+  }
+
+  .brand-name {
+    font-size: 0.9rem;
+  }
 }
