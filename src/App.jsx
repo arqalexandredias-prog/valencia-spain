@@ -8,6 +8,7 @@ import {
   Pencil,
   Plane,
   Plus,
+  Save,
   Trash2,
   Wallet,
 } from "lucide-react";
@@ -16,13 +17,44 @@ const STORAGE_KEYS = {
   savings: "valencia_spain_savings_v1",
   euroPurchases: "valencia_spain_euro_purchases_v1",
   documents: "valencia_spain_documents_v1",
+  plan: "valencia_spain_plan_v1",
 };
 
-const initialData = {
+const defaultPlan = {
   goalBRL: 60000,
+  goalEUR: 7000,
   euroRate: 5.9,
-  targetDate: "Abril de 2027",
+  targetDate: "2027-04-01",
   city: "Valência",
+  country: "Espanha",
+  note:
+    "Juntar reserva, organizar documentos, comprar euros aos poucos e preparar a mudança com segurança.",
+  steps: [
+    {
+      id: 1,
+      title: "Organizar documentos principais",
+      done: false,
+      note: "Passaporte, certidões, diploma, currículo, portfólio e comprovantes.",
+    },
+    {
+      id: 2,
+      title: "Atingir a reserva mínima",
+      done: false,
+      note: "Construir a reserva em reais e euros para chegar com segurança.",
+    },
+    {
+      id: 3,
+      title: "Comprar euros aos poucos",
+      done: false,
+      note: "Registrar compras e acompanhar preço médio.",
+    },
+    {
+      id: 4,
+      title: "Definir cidade e moradia inicial",
+      done: false,
+      note: "Pesquisar custo de vida, aluguel, transporte e bairros.",
+    },
+  ],
 };
 
 const defaultSavings = [
@@ -111,7 +143,11 @@ function loadFromStorage(key, fallback) {
 
     const parsed = JSON.parse(raw);
 
-    return Array.isArray(parsed) ? parsed : fallback;
+    if (Array.isArray(fallback)) {
+      return Array.isArray(parsed) ? parsed : fallback;
+    }
+
+    return parsed && typeof parsed === "object" ? parsed : fallback;
   } catch {
     return fallback;
   }
@@ -196,11 +232,20 @@ function formatDate(date) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
+function formatMonthYear(date) {
+  if (!date) return "Sem data";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
+}
+
 function getSavingsTotal(savings) {
   return savings.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 }
 
-function getEuroSummary(euroPurchases) {
+function getEuroSummary(euroPurchases, euroRate) {
   const totalEUR = euroPurchases.reduce(
     (sum, item) => sum + Number(item.amountEUR || 0),
     0
@@ -212,7 +257,7 @@ function getEuroSummary(euroPurchases) {
   );
 
   const averageRate = totalEUR > 0 ? totalBRL / totalEUR : 0;
-  const currentValueBRL = totalEUR * initialData.euroRate;
+  const currentValueBRL = totalEUR * Number(euroRate || 0);
 
   return {
     totalEUR,
@@ -225,6 +270,20 @@ function getEuroSummary(euroPurchases) {
 function getDocumentsSummary(documents) {
   const total = documents.length;
   const done = documents.filter((item) => item.done).length;
+  const pending = Math.max(total - done, 0);
+  const progress = total > 0 ? (done / total) * 100 : 0;
+
+  return {
+    total,
+    done,
+    pending,
+    progress,
+  };
+}
+
+function getStepsSummary(steps = []) {
+  const total = steps.length;
+  const done = steps.filter((item) => item.done).length;
   const pending = Math.max(total - done, 0);
   const progress = total > 0 ? (done / total) * 100 : 0;
 
@@ -311,17 +370,19 @@ function ProgressBar({ value }) {
   );
 }
 
-function Dashboard({ savings, euroPurchases, documents }) {
-  const data = initialData;
-
+function Dashboard({ savings, euroPurchases, documents, plan }) {
   const summary = useMemo(() => {
     const savedBRL = getSavingsTotal(savings);
-    const euroSummary = getEuroSummary(euroPurchases);
+    const euroSummary = getEuroSummary(euroPurchases, plan.euroRate);
     const docsSummary = getDocumentsSummary(documents);
+    const stepsSummary = getStepsSummary(plan.steps);
 
     const totalSaved = savedBRL + euroSummary.currentValueBRL;
-    const missing = Math.max(data.goalBRL - totalSaved, 0);
-    const progress = data.goalBRL > 0 ? (totalSaved / data.goalBRL) * 100 : 0;
+    const missing = Math.max(Number(plan.goalBRL || 0) - totalSaved, 0);
+    const progress =
+      Number(plan.goalBRL || 0) > 0
+        ? (totalSaved / Number(plan.goalBRL || 0)) * 100
+        : 0;
 
     return {
       savedBRL,
@@ -329,9 +390,10 @@ function Dashboard({ savings, euroPurchases, documents }) {
       missing,
       progress,
       docsSummary,
+      stepsSummary,
       ...euroSummary,
     };
-  }, [data, savings, euroPurchases, documents]);
+  }, [savings, euroPurchases, documents, plan]);
 
   return (
     <>
@@ -361,9 +423,9 @@ function Dashboard({ savings, euroPurchases, documents }) {
         <ProgressBar value={summary.progress} />
 
         <div className="hero-footer">
-          <span>Meta: {formatBRL(data.goalBRL)}</span>
-          <span>Destino: {data.city}</span>
-          <span>Data-alvo: {data.targetDate}</span>
+          <span>Meta: {formatBRL(plan.goalBRL)}</span>
+          <span>Destino: {plan.city}</span>
+          <span>Data-alvo: {formatMonthYear(plan.targetDate)}</span>
         </div>
       </Card>
 
@@ -395,7 +457,9 @@ function Dashboard({ savings, euroPurchases, documents }) {
               <h3>
                 {summary.docsSummary.progress < 100
                   ? "Avançar nos documentos essenciais"
-                  : "Revisar seu plano final"}
+                  : summary.stepsSummary.progress < 100
+                    ? "Avançar nas etapas do plano"
+                    : "Revisar seu plano final"}
               </h3>
             </div>
 
@@ -405,7 +469,9 @@ function Dashboard({ savings, euroPurchases, documents }) {
           <p className="muted">
             {summary.docsSummary.progress < 100
               ? "A parte financeira está andando, mas os documentos precisam caminhar junto. Priorize passaporte, certidões, diploma, currículo, portfólio e comprovantes financeiros."
-              : "Seus documentos principais estão marcados como concluídos. Agora vale revisar cidade, prazo, reserva e próximos passos."}
+              : summary.stepsSummary.progress < 100
+                ? "Agora foque nas etapas principais: reserva, euros, cidade, moradia inicial e prazo realista."
+                : "Seu plano está bem encaminhado. Agora vale revisar prazos, valores, documentos e próximos passos antes da mudança."}
           </p>
         </Card>
 
@@ -415,7 +481,7 @@ function Dashboard({ savings, euroPurchases, documents }) {
           <div className="record-list">
             <div className="record-row">
               <span>Meta Espanha</span>
-              <strong>{formatBRL(data.goalBRL)}</strong>
+              <strong>{formatBRL(plan.goalBRL)}</strong>
             </div>
 
             <div className="record-row">
@@ -590,7 +656,7 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
   );
 }
 
-function ReservaPage({ savings, setSavings }) {
+function ReservaPage({ savings, setSavings, plan }) {
   const [editingItem, setEditingItem] = useState(null);
 
   const totalSaved = useMemo(() => {
@@ -636,13 +702,13 @@ function ReservaPage({ savings, setSavings }) {
 
         <StatCard
           label="Meta Espanha"
-          value={formatBRL(initialData.goalBRL)}
+          value={formatBRL(plan.goalBRL)}
           helper="Objetivo financeiro principal"
         />
 
         <StatCard
           label="Falta juntar"
-          value={formatBRL(Math.max(initialData.goalBRL - totalSaved, 0))}
+          value={formatBRL(Math.max(Number(plan.goalBRL || 0) - totalSaved, 0))}
           helper="Diferença até a meta"
         />
       </section>
@@ -711,13 +777,13 @@ function ReservaPage({ savings, setSavings }) {
   );
 }
 
-function EuroForm({ onSave, editingItem, onCancel }) {
+function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
   const [form, setForm] = useState({
     account: editingItem?.account || "",
     amountEUR: editingItem?.amountEUR ? String(editingItem.amountEUR) : "",
     rate: editingItem?.rate
       ? String(editingItem.rate).replace(".", ",")
-      : String(initialData.euroRate).replace(".", ","),
+      : String(euroRate).replace(".", ","),
     amountBRL: editingItem?.amountBRL ? String(editingItem.amountBRL) : "",
     date: editingItem?.date || new Date().toISOString().slice(0, 10),
     note: editingItem?.note || "",
@@ -743,12 +809,12 @@ function EuroForm({ onSave, editingItem, onCancel }) {
       amountEUR: editingItem?.amountEUR ? String(editingItem.amountEUR) : "",
       rate: editingItem?.rate
         ? String(editingItem.rate).replace(".", ",")
-        : String(initialData.euroRate).replace(".", ","),
+        : String(euroRate).replace(".", ","),
       amountBRL: editingItem?.amountBRL ? String(editingItem.amountBRL) : "",
       date: editingItem?.date || new Date().toISOString().slice(0, 10),
       note: editingItem?.note || "",
     });
-  }, [editingItem]);
+  }, [editingItem, euroRate]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -791,7 +857,7 @@ function EuroForm({ onSave, editingItem, onCancel }) {
     setForm({
       account: "",
       amountEUR: "",
-      rate: String(initialData.euroRate).replace(".", ","),
+      rate: String(euroRate).replace(".", ","),
       amountBRL: "",
       date: new Date().toISOString().slice(0, 10),
       note: "",
@@ -913,12 +979,12 @@ function EuroForm({ onSave, editingItem, onCancel }) {
   );
 }
 
-function EurosPage({ euroPurchases, setEuroPurchases }) {
+function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
   const [editingItem, setEditingItem] = useState(null);
 
   const summary = useMemo(() => {
-    return getEuroSummary(euroPurchases);
-  }, [euroPurchases]);
+    return getEuroSummary(euroPurchases, plan.euroRate);
+  }, [euroPurchases, plan.euroRate]);
 
   function handleSave(item) {
     setEuroPurchases((current) => {
@@ -960,7 +1026,7 @@ function EurosPage({ euroPurchases, setEuroPurchases }) {
         <StatCard
           label="Euros comprados"
           value={formatEUR(summary.totalEUR)}
-          helper="Total acumulado em moeda"
+          helper={`Meta: ${formatEUR(plan.goalEUR)}`}
         />
 
         <StatCard
@@ -976,12 +1042,13 @@ function EurosPage({ euroPurchases, setEuroPurchases }) {
               ? formatBRLWithCents(summary.averageRate)
               : "R$ 0,00"
           }
-          helper="Preço médio das compras"
+          helper={`Base atual: ${formatBRLWithCents(plan.euroRate)}`}
         />
       </section>
 
       <EuroForm
         editingItem={editingItem}
+        euroRate={plan.euroRate}
         onSave={handleSave}
         onCancel={() => setEditingItem(null)}
       />
@@ -1379,37 +1446,401 @@ function DocumentosPage({ documents, setDocuments }) {
   );
 }
 
-function PlanoPage() {
+function PlanForm({ plan, setPlan }) {
+  const [form, setForm] = useState({
+    city: plan.city || "",
+    country: plan.country || "Espanha",
+    targetDate: plan.targetDate || "",
+    goalBRL: String(plan.goalBRL || ""),
+    goalEUR: String(plan.goalEUR || ""),
+    euroRate: String(plan.euroRate || "").replace(".", ","),
+    note: plan.note || "",
+  });
+
+  useEffect(() => {
+    setForm({
+      city: plan.city || "",
+      country: plan.country || "Espanha",
+      targetDate: plan.targetDate || "",
+      goalBRL: String(plan.goalBRL || ""),
+      goalEUR: String(plan.goalEUR || ""),
+      euroRate: String(plan.euroRate || "").replace(".", ","),
+      note: plan.note || "",
+    });
+  }, [plan]);
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const goalBRL = parseMoney(form.goalBRL);
+    const goalEUR = parseMoney(form.goalEUR);
+    const euroRate = parseMoney(form.euroRate);
+
+    if (!form.city.trim()) {
+      alert("Informe a cidade desejada.");
+      return;
+    }
+
+    if (goalBRL <= 0) {
+      alert("Informe uma meta em reais maior que zero.");
+      return;
+    }
+
+    if (euroRate <= 0) {
+      alert("Informe uma cotação base válida.");
+      return;
+    }
+
+    setPlan((current) => ({
+      ...current,
+      city: form.city.trim(),
+      country: form.country.trim() || "Espanha",
+      targetDate: form.targetDate,
+      goalBRL,
+      goalEUR,
+      euroRate,
+      note: form.note.trim(),
+    }));
+
+    alert("Plano atualizado.");
+  }
+
+  return (
+    <Card>
+      <div className="card-title-row">
+        <div>
+          <span className="section-eyebrow">Plano principal</span>
+          <h3>Editar estratégia da mudança</h3>
+        </div>
+
+        <Save size={22} />
+      </div>
+
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Cidade desejada</span>
+          <input
+            name="city"
+            value={form.city}
+            placeholder="Ex: Valência, Madrid, Barcelona..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>País</span>
+          <input
+            name="country"
+            value={form.country}
+            placeholder="Espanha"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Data-alvo</span>
+          <input
+            name="targetDate"
+            value={form.targetDate}
+            type="date"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Meta em reais</span>
+          <input
+            name="goalBRL"
+            value={form.goalBRL}
+            inputMode="decimal"
+            placeholder="60000"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Meta em euros</span>
+          <input
+            name="goalEUR"
+            value={form.goalEUR}
+            inputMode="decimal"
+            placeholder="7000"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field">
+          <span>Cotação base</span>
+          <input
+            name="euroRate"
+            value={form.euroRate}
+            inputMode="decimal"
+            placeholder="5,90"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field field-full">
+          <span>Observação do plano</span>
+          <textarea
+            name="note"
+            value={form.note}
+            rows={4}
+            placeholder="Ex: objetivo, motivo da mudança, estratégia financeira..."
+            onChange={handleChange}
+          />
+        </label>
+
+        <div className="form-actions field-full">
+          <button className="button primary" type="submit">
+            Salvar plano
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function StepForm({ onSave }) {
+  const [form, setForm] = useState({
+    title: "",
+    note: "",
+  });
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!form.title.trim()) {
+      alert("Informe o nome da etapa.");
+      return;
+    }
+
+    onSave({
+      id: Date.now(),
+      title: form.title.trim(),
+      note: form.note.trim(),
+      done: false,
+    });
+
+    setForm({
+      title: "",
+      note: "",
+    });
+  }
+
+  return (
+    <Card>
+      <div className="card-title-row">
+        <div>
+          <span className="section-eyebrow">Nova etapa</span>
+          <h3>Adicionar passo do plano</h3>
+        </div>
+
+        <Plus size={22} />
+      </div>
+
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Etapa</span>
+          <input
+            name="title"
+            value={form.title}
+            placeholder="Ex: pesquisar aluguel inicial"
+            onChange={handleChange}
+          />
+        </label>
+
+        <label className="field field-full">
+          <span>Observação</span>
+          <textarea
+            name="note"
+            value={form.note}
+            rows={3}
+            placeholder="Ex: o que precisa ser feito nesta etapa."
+            onChange={handleChange}
+          />
+        </label>
+
+        <div className="form-actions field-full">
+          <button className="button primary" type="submit">
+            Adicionar etapa
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function PlanoPage({ plan, setPlan }) {
+  const summary = useMemo(() => {
+    return getStepsSummary(plan.steps || []);
+  }, [plan.steps]);
+
+  function addStep(step) {
+    setPlan((current) => ({
+      ...current,
+      steps: [step, ...(current.steps || [])],
+    }));
+  }
+
+  function toggleStep(step) {
+    setPlan((current) => ({
+      ...current,
+      steps: (current.steps || []).map((item) =>
+        item.id === step.id ? { ...item, done: !item.done } : item
+      ),
+    }));
+  }
+
+  function deleteStep(step) {
+    const confirmDelete = window.confirm(`Excluir etapa "${step.title}"?`);
+
+    if (!confirmDelete) return;
+
+    setPlan((current) => ({
+      ...current,
+      steps: (current.steps || []).filter((item) => item.id !== step.id),
+    }));
+  }
+
   return (
     <>
       <PageHeader
         eyebrow="Plano Espanha"
         title="Estratégia da mudança"
-        description="Cidade, data-alvo, etapas e decisões importantes do plano."
+        description="Defina cidade, data-alvo, meta financeira, cotação base e etapas principais da imigração."
       />
 
+      <section className="stats-grid">
+        <StatCard
+          label="Destino"
+          value={plan.city}
+          helper={plan.country || "Espanha"}
+        />
+
+        <StatCard
+          label="Data-alvo"
+          value={formatMonthYear(plan.targetDate)}
+          helper="Previsão da mudança"
+        />
+
+        <StatCard
+          label="Etapas"
+          value={`${Math.round(summary.progress)}%`}
+          helper={`${summary.done} de ${summary.total} concluídas`}
+        />
+      </section>
+
+      <section className="content-grid">
+        <Card>
+          <span className="section-eyebrow">Metas</span>
+
+          <div className="record-list">
+            <div className="record-row">
+              <span>Meta em reais</span>
+              <strong>{formatBRL(plan.goalBRL)}</strong>
+            </div>
+
+            <div className="record-row">
+              <span>Meta em euros</span>
+              <strong>{formatEUR(plan.goalEUR)}</strong>
+            </div>
+
+            <div className="record-row">
+              <span>Cotação base</span>
+              <strong>{formatBRLWithCents(plan.euroRate)}</strong>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <span className="section-eyebrow">Observação</span>
+          <p className="muted">{plan.note || "Nenhuma observação cadastrada."}</p>
+        </Card>
+      </section>
+
       <Card>
-        <div className="record-list">
-          <div className="record-row">
-            <span>Cidade desejada</span>
-            <strong>{initialData.city}</strong>
-          </div>
-
-          <div className="record-row">
-            <span>Data-alvo</span>
-            <strong>{initialData.targetDate}</strong>
-          </div>
-
-          <div className="record-row">
-            <span>Meta financeira</span>
-            <strong>{formatBRL(initialData.goalBRL)}</strong>
-          </div>
-
-          <div className="record-row">
-            <span>Cotação base</span>
-            <strong>{formatBRLWithCents(initialData.euroRate)}</strong>
-          </div>
+        <span className="section-eyebrow">Progresso das etapas</span>
+        <div style={{ marginTop: 14 }}>
+          <ProgressBar value={summary.progress} />
         </div>
+      </Card>
+
+      <PlanForm plan={plan} setPlan={setPlan} />
+
+      <StepForm onSave={addStep} />
+
+      <Card>
+        <div className="card-title-row">
+          <div>
+            <span className="section-eyebrow">Etapas principais</span>
+            <h3>Checklist do plano</h3>
+          </div>
+
+          <Plane size={22} />
+        </div>
+
+        {(plan.steps || []).length > 0 ? (
+          <div className="record-list">
+            {(plan.steps || []).map((step) => (
+              <div
+                className={step.done ? "document-row done" : "document-row"}
+                key={step.id}
+              >
+                <button
+                  className={step.done ? "check-button checked" : "check-button"}
+                  type="button"
+                  onClick={() => toggleStep(step)}
+                  aria-label="Marcar etapa"
+                >
+                  <CheckCircle2 size={19} />
+                </button>
+
+                <div className="saving-info">
+                  <strong>{step.title}</strong>
+                  {step.note && <small>{step.note}</small>}
+                </div>
+
+                <div className="document-actions">
+                  <strong className={step.done ? "success" : "warning"}>
+                    {step.done ? "Concluído" : "Pendente"}
+                  </strong>
+
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => deleteStep(step)}
+                    aria-label="Excluir"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            Nenhuma etapa cadastrada ainda. Adicione os próximos passos do plano.
+          </p>
+        )}
       </Card>
     </>
   );
@@ -1430,6 +1861,10 @@ export default function App() {
     loadFromStorage(STORAGE_KEYS.documents, defaultDocuments)
   );
 
+  const [plan, setPlan] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.plan, defaultPlan)
+  );
+
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.savings, savings);
   }, [savings]);
@@ -1442,9 +1877,13 @@ export default function App() {
     saveToStorage(STORAGE_KEYS.documents, documents);
   }, [documents]);
 
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.plan, plan);
+  }, [plan]);
+
   function renderPage() {
     if (activePage === "reserva") {
-      return <ReservaPage savings={savings} setSavings={setSavings} />;
+      return <ReservaPage savings={savings} setSavings={setSavings} plan={plan} />;
     }
 
     if (activePage === "euros") {
@@ -1452,6 +1891,7 @@ export default function App() {
         <EurosPage
           euroPurchases={euroPurchases}
           setEuroPurchases={setEuroPurchases}
+          plan={plan}
         />
       );
     }
@@ -1462,13 +1902,16 @@ export default function App() {
       );
     }
 
-    if (activePage === "plano") return <PlanoPage />;
+    if (activePage === "plano") {
+      return <PlanoPage plan={plan} setPlan={setPlan} />;
+    }
 
     return (
       <Dashboard
         savings={savings}
         euroPurchases={euroPurchases}
         documents={documents}
+        plan={plan}
       />
     );
   }
