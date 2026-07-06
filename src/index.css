@@ -607,4 +607,38 @@ a {
   .form-actions .button {
     width: 100%;
   }
+}.preview-card {
+  margin: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: none;
+}
+
+.money-stack {
+  display: grid;
+  gap: 4px;
+  min-width: 132px;
+  text-align: right;
+}
+
+.money-stack strong {
+  min-width: 0;
+  text-align: right;
+}
+
+.money-stack small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 780px) {
+  .money-stack {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .money-stack strong {
+    text-align: left;
+  }
 }
