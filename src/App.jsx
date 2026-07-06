@@ -474,6 +474,58 @@ function getFocusPage(summary) {
   return { label: "Plano", page: "plano" };
 }
 
+function getSmartInsights(summary, plan) {
+  const insights = [];
+
+  if (summary.missing <= 0) {
+    insights.push({
+      label: "Meta",
+      text: "Reserva principal atingida.",
+      tone: "success",
+    });
+  } else {
+    insights.push({
+      label: "Ritmo",
+      text: `${formatBRL(summary.monthlyNeed)}/mês até ${formatMonthYear(
+        plan.targetDate
+      )}.`,
+      tone: summary.monthlyNeed > 4500 ? "warning" : "neutral",
+    });
+  }
+
+  if (summary.costsSummary.total > Number(plan.goalBRL || 0)) {
+    insights.push({
+      label: "Custos",
+      text: "Estimativa acima da meta atual.",
+      tone: "warning",
+    });
+  } else {
+    insights.push({
+      label: "Custos",
+      text: "Estimativa dentro da meta.",
+      tone: "success",
+    });
+  }
+
+  if (summary.docsSummary.pending > 0) {
+    insights.push({
+      label: "Docs",
+      text: `${summary.docsSummary.pending} pendente${
+        summary.docsSummary.pending > 1 ? "s" : ""
+      }.`,
+      tone: "neutral",
+    });
+  } else {
+    insights.push({
+      label: "Docs",
+      text: "Documentos concluídos.",
+      tone: "success",
+    });
+  }
+
+  return insights;
+}
+
 function AppShell({ activePage, setActivePage, children }) {
   return (
     <div className="app-shell">
@@ -595,6 +647,23 @@ function InsightPill({ label, value }) {
   );
 }
 
+function SmartInsightCard({ insights }) {
+  return (
+    <Card className="smart-card">
+      <SectionTitle eyebrow="Leitura" title="Plano" />
+
+      <div className="smart-list">
+        {insights.map((item) => (
+          <div className={`smart-row ${item.tone}`} key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.text}</strong>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function QuickAction({ title, label, onClick }) {
   return (
     <button className="quick-action" type="button" onClick={onClick}>
@@ -612,6 +681,41 @@ function FormError({ children }) {
   if (!children) return null;
 
   return <p className="form-error field-full">{children}</p>;
+}
+
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel = "Excluir",
+  cancelLabel = "Cancelar",
+  onConfirm,
+  onCancel,
+}) {
+  return (
+    <div className="dialog-backdrop" role="presentation">
+      <section className="dialog-card" role="dialog" aria-modal="true">
+        <div className="dialog-icon">
+          <Trash2 size={20} />
+        </div>
+
+        <div className="dialog-content">
+          <span className="section-eyebrow">Confirmar</span>
+          <h3>{title}</h3>
+          <p>{message}</p>
+        </div>
+
+        <div className="dialog-actions">
+          <button className="button ghost" type="button" onClick={onCancel}>
+            {cancelLabel}
+          </button>
+
+          <button className="button danger" type="button" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function Dashboard({
@@ -639,7 +743,7 @@ function Dashboard({
     const monthlyNeed = missing / monthsLeft;
     const status = getPlanStatus(progress, monthsLeft, docsSummary.pending);
 
-    return {
+    const baseSummary = {
       savedBRL,
       totalSaved,
       missing,
@@ -651,9 +755,15 @@ function Dashboard({
       costsSummary,
       ...euroSummary,
     };
+
+    return {
+      ...baseSummary,
+      insights: getSmartInsights(baseSummary, plan),
+    };
   }, [savings, euroPurchases, documents, plan, costs]);
 
   const focus = getFocusPage(summary);
+  const progressLabel = Math.min(Math.round(summary.progress), 100);
 
   return (
     <>
@@ -671,7 +781,7 @@ function Dashboard({
         <div className="hero-grid">
           <div>
             <span className="section-eyebrow">Progresso</span>
-            <h2>{Math.round(summary.progress)}%</h2>
+            <h2>{progressLabel}%</h2>
             <p>
               <strong>{formatBRL(summary.totalSaved)}</strong> guardados
             </p>
@@ -701,6 +811,8 @@ function Dashboard({
           <InsightPill label="Foco" value={focus.label} />
         </div>
       </Card>
+
+      <SmartInsightCard insights={summary.insights} />
 
       <section className="compact-metrics">
         <MetricCard
@@ -895,6 +1007,7 @@ function SavingsForm({ onSave, editingItem, onCancel }) {
 function ReservaPage({ savings, setSavings, plan }) {
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const totalSaved = useMemo(() => getSavingsTotal(savings), [savings]);
   const missing = Math.max(Number(plan.goalBRL || 0) - totalSaved, 0);
@@ -914,10 +1027,14 @@ function ReservaPage({ savings, setSavings, plan }) {
     setShowForm(false);
   }
 
-  function handleDelete(item) {
-    if (!window.confirm(`Excluir "${item.title}"?`)) return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
 
-    setSavings((current) => current.filter((saving) => saving.id !== item.id));
+    setSavings((current) =>
+      current.filter((saving) => saving.id !== deleteTarget.id)
+    );
+
+    setDeleteTarget(null);
   }
 
   function handleEdit(item) {
@@ -990,7 +1107,7 @@ function ReservaPage({ savings, setSavings, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => handleDelete(item)}
+                    onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1002,6 +1119,15 @@ function ReservaPage({ savings, setSavings, plan }) {
           <p className="muted">Nenhum valor cadastrado.</p>
         )}
       </Card>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Excluir reserva?"
+          message={`"${deleteTarget.title}" será removido da sua reserva.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </>
   );
 }
@@ -1202,6 +1328,7 @@ function EuroForm({ onSave, editingItem, onCancel, euroRate }) {
 function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const summary = useMemo(
     () => getEuroSummary(euroPurchases, plan.euroRate),
@@ -1225,12 +1352,14 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
     setShowForm(false);
   }
 
-  function handleDelete(item) {
-    if (!window.confirm(`Excluir ${formatEURWithCents(item.amountEUR)}?`)) return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
 
     setEuroPurchases((current) =>
-      current.filter((purchase) => purchase.id !== item.id)
+      current.filter((purchase) => purchase.id !== deleteTarget.id)
     );
+
+    setDeleteTarget(null);
   }
 
   function handleEdit(item) {
@@ -1314,7 +1443,7 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => handleDelete(item)}
+                    onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1326,6 +1455,17 @@ function EurosPage({ euroPurchases, setEuroPurchases, plan }) {
           <p className="muted">Nenhuma compra cadastrada.</p>
         )}
       </Card>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Excluir compra?"
+          message={`${formatEURWithCents(
+            deleteTarget.amountEUR
+          )} serão removidos do histórico.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </>
   );
 }
@@ -1483,6 +1623,7 @@ function DocumentForm({ onSave, editingItem, onCancel }) {
 function DocumentosPage({ documents, setDocuments }) {
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const summary = useMemo(() => getDocumentsSummary(documents), [documents]);
 
@@ -1512,12 +1653,14 @@ function DocumentosPage({ documents, setDocuments }) {
     setShowForm(false);
   }
 
-  function handleDelete(item) {
-    if (!window.confirm(`Excluir "${item.title}"?`)) return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
 
     setDocuments((current) =>
-      current.filter((document) => document.id !== item.id)
+      current.filter((document) => document.id !== deleteTarget.id)
     );
+
+    setDeleteTarget(null);
   }
 
   function toggleDone(item) {
@@ -1611,7 +1754,7 @@ function DocumentosPage({ documents, setDocuments }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => handleDelete(item)}
+                    onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1623,6 +1766,15 @@ function DocumentosPage({ documents, setDocuments }) {
           <p className="muted">Nenhum documento cadastrado.</p>
         )}
       </Card>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Excluir documento?"
+          message={`"${deleteTarget.title}" será removido do checklist.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </>
   );
 }
@@ -1788,6 +1940,7 @@ function CostForm({ onSave, editingItem, onCancel }) {
 function CustosPage({ costs, setCosts, plan }) {
   const [editingItem, setEditingItem] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const summary = useMemo(() => getCostsSummary(costs), [costs]);
 
@@ -1815,10 +1968,12 @@ function CustosPage({ costs, setCosts, plan }) {
     setShowForm(false);
   }
 
-  function handleDelete(item) {
-    if (!window.confirm(`Excluir "${item.title}"?`)) return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
 
-    setCosts((current) => current.filter((cost) => cost.id !== item.id));
+    setCosts((current) => current.filter((cost) => cost.id !== deleteTarget.id));
+
+    setDeleteTarget(null);
   }
 
   function togglePaid(item) {
@@ -1914,7 +2069,7 @@ function CustosPage({ costs, setCosts, plan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => handleDelete(item)}
+                    onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1926,6 +2081,15 @@ function CustosPage({ costs, setCosts, plan }) {
           <p className="muted">Nenhum custo cadastrado.</p>
         )}
       </Card>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Excluir custo?"
+          message={`"${deleteTarget.title}" será removido da estimativa.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </>
   );
 }
@@ -2148,6 +2312,7 @@ function StepForm({ onSave, onDone }) {
 function PlanoPage({ plan, setPlan }) {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [showStepForm, setShowStepForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const summary = useMemo(() => getStepsSummary(plan.steps || []), [plan.steps]);
 
@@ -2167,13 +2332,15 @@ function PlanoPage({ plan, setPlan }) {
     }));
   }
 
-  function deleteStep(step) {
-    if (!window.confirm(`Excluir "${step.title}"?`)) return;
+  function confirmDelete() {
+    if (!deleteTarget) return;
 
     setPlan((current) => ({
       ...current,
-      steps: (current.steps || []).filter((item) => item.id !== step.id),
+      steps: (current.steps || []).filter((item) => item.id !== deleteTarget.id),
     }));
+
+    setDeleteTarget(null);
   }
 
   return (
@@ -2251,7 +2418,7 @@ function PlanoPage({ plan, setPlan }) {
                   <button
                     className="icon-button"
                     type="button"
-                    onClick={() => deleteStep(step)}
+                    onClick={() => setDeleteTarget(step)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -2263,6 +2430,15 @@ function PlanoPage({ plan, setPlan }) {
           <p className="muted">Nenhuma etapa cadastrada.</p>
         )}
       </Card>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Excluir etapa?"
+          message={`"${deleteTarget.title}" será removida do plano.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </>
   );
 }

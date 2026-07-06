@@ -290,7 +290,8 @@ a {
 
 .insight-main span,
 .insight-pill span,
-.quick-action small {
+.quick-action small,
+.smart-row span {
   color: var(--gold);
   font-size: 0.62rem;
   font-weight: 900;
@@ -327,6 +328,44 @@ a {
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.smart-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 24px;
+}
+
+.smart-list {
+  display: grid;
+  gap: 8px;
+}
+
+.smart-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.smart-row strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  text-align: right;
+}
+
+.smart-row.success strong {
+  color: var(--success);
+}
+
+.smart-row.warning strong {
+  color: var(--warning);
 }
 
 .compact-metrics {
@@ -506,6 +545,12 @@ a {
 
 .button.ghost {
   background: transparent;
+}
+
+.button.danger {
+  color: #160606;
+  border-color: rgba(216, 139, 139, 0.55);
+  background: linear-gradient(135deg, #e9a6a6, #9f5555);
 }
 
 .form-grid {
@@ -701,6 +746,65 @@ a {
 .compact-progress-card {
   padding: 14px;
   border-radius: 20px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.dialog-card {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 420px);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 20px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 78%),
+    #090909;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6);
+}
+
+.dialog-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgba(216, 139, 139, 0.28);
+  border-radius: 16px;
+  color: #f2b6b6;
+  background: rgba(216, 139, 139, 0.08);
+}
+
+.dialog-content {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-content h3 {
+  margin: 0;
+  font-family: Sora, sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: -0.05em;
+}
+
+.dialog-content p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .bottom-nav {
@@ -908,12 +1012,33 @@ a {
 
   .insight-main span,
   .insight-pill span,
-  .quick-action small {
+  .quick-action small,
+  .smart-row span {
     font-size: 0.5rem;
     letter-spacing: 0.11em;
   }
 
   .insight-pill strong {
+    font-size: 0.72rem;
+  }
+
+  .smart-card {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .smart-list {
+    gap: 7px;
+  }
+
+  .smart-row {
+    min-height: 38px;
+    padding: 9px 10px;
+    border-radius: 14px;
+  }
+
+  .smart-row strong {
     font-size: 0.72rem;
   }
 
@@ -1106,6 +1231,25 @@ a {
 
   .form-actions .button {
     width: 100%;
+  }
+
+  .dialog-card {
+    gap: 14px;
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .dialog-content h3 {
+    font-size: 1.18rem;
+  }
+
+  .dialog-content p {
+    font-size: 0.86rem;
+  }
+
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .bottom-nav {
