@@ -21,6 +21,7 @@ const STORAGE_KEYS = {
   documents: "valencia_spain_documents_v1",
   plan: "valencia_spain_plan_v1",
   costs: "valencia_spain_costs_v1",
+  activePage: "valencia_spain_active_page_v1",
 };
 
 const defaultPlan = {
@@ -194,6 +195,24 @@ const navItems = [
   { id: "custos", label: "Custos", icon: Calculator },
   { id: "plano", label: "Plano", icon: Plane },
 ];
+
+function isValidPage(page) {
+  return navItems.some((item) => item.id === page);
+}
+
+function getPageFromHash() {
+  return window.location.hash.replace("#", "").replace("/", "");
+}
+
+function getInitialPage() {
+  const hashPage = getPageFromHash();
+  const savedPage = localStorage.getItem(STORAGE_KEYS.activePage);
+
+  if (isValidPage(hashPage)) return hashPage;
+  if (isValidPage(savedPage)) return savedPage;
+
+  return "inicio";
+}
 
 function loadFromStorage(key, fallback) {
   try {
@@ -1276,9 +1295,7 @@ function DocumentosPage({ documents, setDocuments }) {
   function toggleDone(item) {
     setDocuments((current) =>
       current.map((document) =>
-        document.id === item.id
-          ? { ...document, done: !document.done }
-          : document
+        document.id === item.id ? { ...document, done: !document.done } : document
       )
     );
   }
@@ -1990,7 +2007,7 @@ function PlanoPage({ plan, setPlan }) {
 }
 
 export default function App() {
-  const [activePage, setActivePage] = useState("inicio");
+  const [activePage, setActivePage] = useState(() => getInitialPage());
 
   const [savings, setSavings] = useState(() =>
     loadFromStorage(STORAGE_KEYS.savings, defaultSavings)
@@ -2011,6 +2028,32 @@ export default function App() {
   const [plan, setPlan] = useState(() =>
     loadFromStorage(STORAGE_KEYS.plan, defaultPlan)
   );
+
+  useEffect(() => {
+    function handleHashChange() {
+      const hashPage = getPageFromHash();
+
+      if (isValidPage(hashPage)) {
+        setActivePage(hashPage);
+      }
+    }
+
+    window.addEventListener("hashchange", handleHashChange);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.activePage, activePage);
+
+    const nextHash = `#/${activePage}`;
+
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, "", nextHash);
+    }
+  }, [activePage]);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.savings, savings);
