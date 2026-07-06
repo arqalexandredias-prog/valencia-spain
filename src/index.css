@@ -1131,4 +1131,76 @@ a {
     font-size: 1rem;
     letter-spacing: 0.16em;
   }
+}@media (max-width: 780px) {
+  .page-header h1 {
+    font-size: clamp(1.75rem, 8vw, 2.25rem);
+    max-width: 92%;
+  }
+
+  .hero-card {
+    padding: 15px;
+    gap: 12px;
+  }
+
+  .hero-card h2 {
+    font-size: clamp(2.6rem, 12vw, 3.25rem);
+  }
+
+  .hero-card p {
+    font-size: 0.8rem;
+  }
+
+  .hero-missing {
+    padding: 12px;
+  }
+
+  .hero-missing strong {
+    font-size: clamp(1.65rem, 8vw, 2.05rem);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stats-grid .card {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
+    letter-spacing: -0.06em;
+  }
+
+  .stat-helper {
+    font-size: 0.76rem;
+    line-height: 1.35;
+  }
+
+  .main-content {
+    gap: 12px;
+  }
+
+  .bottom-nav {
+    bottom: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .page-header h1 {
+    font-size: 1.7rem;
+  }
+
+  .hero-card h2 {
+    font-size: 2.55rem;
+  }
+
+  .hero-missing strong {
+    font-size: 1.6rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
 }
